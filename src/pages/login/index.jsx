@@ -21,9 +21,8 @@ const LoginPage = () => {
     localStorage.setItem('currentLanguage', language);
   };
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = () => {
     // Additional login success handling can be added here
-    console.log('Login successful for user:', user);
   };
 
   const handleCredentialSelect = (credentials) => {

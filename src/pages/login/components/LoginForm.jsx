@@ -192,7 +192,6 @@ const LoginForm = ({
         }
       } else {
         // Sign in flow
-        console.log('[LoginForm] Attempting sign in with:', formData?.email);
         const { data, error } = await signIn(formData?.email, formData?.password);
 
         if (error) {
@@ -213,12 +212,9 @@ const LoginForm = ({
         }
 
         if (data?.user) {
-          console.log('[LoginForm] Sign in successful, user:', data?.user?.email);
-          console.log('[LoginForm] Current company:', currentCompany?.name);
           
           // Auth context has already loaded user data, navigate immediately
           if (currentCompany) {
-            console.log('[LoginForm] Navigating to dashboard');
             onLoginSuccess?.();
             navigate('/dashboard');
           } else {
@@ -262,7 +258,6 @@ const LoginForm = ({
 
   const handleMagicLink = async () => {
     // Placeholder for magic link functionality
-    console.log('Magic link requested for:', formData?.email);
   };
 
   return (

@@ -74,7 +74,6 @@ const Settings = () => {
       const now = new Date();
       setLastSaved(now);
       localStorage.setItem('settingsLastSaved', now?.toISOString());
-      console.log(`Settings saved for ${section}:`, data);
       return { success: true };
     } catch (error) {
       console.error('Error saving settings:', error);

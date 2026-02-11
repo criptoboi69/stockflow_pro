@@ -39,17 +39,14 @@ const StockMovements = () => {
     filter: currentCompany?.id ? { column: 'company_id', value: currentCompany?.id } : null,
     enabled: !!currentCompany?.id,
     onInsert: (newMovement) => {
-      console.log('New stock movement added:', newMovement);
       // Reload movements to get complete data with relations
       loadMovements();
     },
     onUpdate: (updatedMovement) => {
-      console.log('Stock movement updated:', updatedMovement);
       // Reload movements to get complete data with relations
       loadMovements();
     },
     onDelete: (deletedMovement) => {
-      console.log('Stock movement deleted:', deletedMovement);
       // Remove from list
       setMovements(prev => prev?.filter(m => m?.id !== deletedMovement?.id));
       setFilteredMovements(prev => prev?.filter(m => m?.id !== deletedMovement?.id));
@@ -120,7 +117,6 @@ const StockMovements = () => {
 
   const handleSaveAdjustment = async (movementData) => {
     try {
-      console.log('Updating movement:', movementData);
       await stockMovementService?.updateStockMovement(selectedMovement?.id, movementData);
       setIsEditModalOpen(false);
       setSelectedMovement(null);
@@ -144,7 +140,6 @@ const StockMovements = () => {
       Motif: movement?.reason
     }));
 
-    console.log('Exporting CSV:', csvData);
   };
 
   const handleAddMovement = () => {
@@ -157,7 +152,6 @@ const StockMovements = () => {
 
   const handleSaveNewMovement = async (movementData) => {
     try {
-      console.log('Creating new movement:', movementData);
       await stockMovementService?.createStockMovement(movementData, currentCompany?.id, user?.id);
       setIsNewMovementModalOpen(false);
       // Real-time subscription will handle the insert
@@ -222,7 +216,7 @@ const StockMovements = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         userRole={effectiveRole}
-        currentTenant={currentCompany?.name} />
+        currentTenant={currentCompany || { name: 'StockFlow Pro' }} />
 
       <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
         {/* Mobile header spacer */}

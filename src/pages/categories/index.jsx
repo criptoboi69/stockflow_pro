@@ -185,7 +185,7 @@ const CategoriesPage = () => {
           isCollapsed={isCollapsed}
           onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
           userRole={currentRole || 'user'}
-          currentTenant={currentCompany?.name || 'StockFlow Pro'}
+          currentTenant={currentCompany || { name: 'StockFlow Pro' }}
         />
 
         <main className={`
