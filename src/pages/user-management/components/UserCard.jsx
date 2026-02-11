@@ -1,0 +1,137 @@
+import React from 'react';
+import Icon from '../../../components/AppIcon';
+import Button from '../../../components/ui/Button';
+import Image from '../../../components/AppImage';
+
+const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole }) => {
+  const getRoleColor = (role) => {
+    switch (role) {
+      case 'super_admin':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'administrator':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'manager':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'user':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getRoleLabel = (role) => {
+    const labels = {
+      super_admin: 'Super Admin',
+      administrator: 'Administrateur',
+      manager: 'Gestionnaire',
+      user: 'Utilisateur'
+    };
+    return labels?.[role] || role;
+  };
+
+  const getStatusColor = (isActive) => {
+    return isActive
+      ? 'bg-success/10 text-success border-success/20' :'bg-error/10 text-error border-error/20';
+  };
+
+  const formatLastLogin = (date) => {
+    if (!date) return 'Jamais connecté';
+    const now = new Date();
+    const loginDate = new Date(date);
+    const diffInHours = Math.floor((now - loginDate) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Il y a moins d\'une heure';
+    if (diffInHours < 24) return `Il y a ${diffInHours}h`;
+    if (diffInHours < 48) return 'Hier';
+    return loginDate?.toLocaleDateString('fr-FR');
+  };
+
+  const canEdit = currentUserRole === 'super_admin' || 
+    (currentUserRole === 'administrator' && user?.role !== 'super_admin') ||
+    (currentUserRole === 'manager' && user?.role === 'user');
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 card-shadow hover:shadow-lg transition-hover">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <Image
+              src={user?.avatar}
+              alt={user?.avatarAlt}
+              className="w-12 h-12 rounded-full object-cover"
+            />
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+              user?.status === 'active' ? 'bg-success' : 
+              user?.status === 'pending' ? 'bg-warning' : 'bg-error'
+            }`} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-text-primary">{user?.name}</h3>
+            <p className="text-sm text-text-muted">{user?.email}</p>
+          </div>
+        </div>
+        
+        {canEdit && (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(user)}
+              className="text-text-secondary hover:text-text-primary"
+            >
+              <Icon name="Edit" size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onToggleStatus(user)}
+              className="text-text-secondary hover:text-text-primary"
+            >
+              <Icon name={user?.status === 'active' ? 'UserX' : 'UserCheck'} size={16} />
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-secondary">Rôle</span>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRoleColor(user?.role)}`}>
+            {getRoleLabel(user?.role)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-secondary">Statut</span>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user?.status)}`}>
+            {user?.status === 'active' ? 'Actif' :
+             user?.status === 'pending' ? 'En attente' : 'Inactif'}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-secondary">Société</span>
+          <span className="text-sm font-medium text-text-primary">{user?.company}</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-secondary">Dernière connexion</span>
+          <span className="text-sm text-text-primary">{formatLastLogin(user?.lastLogin)}</span>
+        </div>
+
+        <div className="pt-3 border-t border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onViewDetails(user)}
+            className="w-full"
+          >
+            <Icon name="Eye" size={16} className="mr-2" />
+            Voir les détails
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UserCard;

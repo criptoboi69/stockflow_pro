@@ -1,0 +1,343 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Theme Colors */
+    --color-background: #F8FAFC; /* slate-50 */
+    --color-foreground: #0F172A; /* slate-900 */
+    --color-card: #FFFFFF; /* white */
+    --color-card-foreground: #0F172A; /* slate-900 */
+    --color-popover: #FFFFFF; /* white */
+    --color-popover-foreground: #0F172A; /* slate-900 */
+    --color-muted: #F1F5F9; /* slate-100 */
+    --color-muted-foreground: #64748B; /* slate-500 */
+    
+    /* Primary Colors */
+    --color-primary: #2563EB; /* blue-600 */
+    --color-primary-foreground: #FFFFFF; /* white */
+    
+    /* Secondary Colors */
+    --color-secondary: #64748B; /* slate-500 */
+    --color-secondary-foreground: #FFFFFF; /* white */
+    
+    /* Accent Colors */
+    --color-accent: #0EA5E9; /* sky-500 */
+    --color-accent-foreground: #FFFFFF; /* white */
+    
+    /* State Colors */
+    --color-success: #22C55E; /* green-500 */
+    --color-success-foreground: #FFFFFF; /* white */
+    --color-warning: #F59E0B; /* amber-500 */
+    --color-warning-foreground: #FFFFFF; /* white */
+    --color-error: #EF4444; /* red-500 */
+    --color-error-foreground: #FFFFFF; /* white */
+    --color-destructive: #EF4444; /* red-500 */
+    --color-destructive-foreground: #FFFFFF; /* white */
+    
+    /* UI Elements */
+    --color-border: #E2E8F0; /* slate-200 */
+    --color-input: #FFFFFF; /* white */
+    --color-ring: #2563EB; /* blue-600 */
+    
+    /* Text Colors */
+    --color-text-primary: #0F172A; /* slate-900 */
+    --color-text-secondary: #475569; /* slate-600 */
+    --color-text-muted: #64748B; /* slate-500 */
+    
+    /* Surface Colors */
+    --color-surface: #FFFFFF; /* white */
+    --color-surface-foreground: #0F172A; /* slate-900 */
+  }
+
+  .dark {
+    /* Dark Theme Colors */
+    --color-background: #0F172A; /* slate-900 */
+    --color-foreground: #F8FAFC; /* slate-50 */
+    --color-card: #1E293B; /* slate-800 */
+    --color-card-foreground: #F8FAFC; /* slate-50 */
+    --color-popover: #1E293B; /* slate-800 */
+    --color-popover-foreground: #F8FAFC; /* slate-50 */
+    --color-muted: #334155; /* slate-700 */
+    --color-muted-foreground: #94A3B8; /* slate-400 */
+    
+    /* Primary Colors - Enhanced for dark mode */
+    --color-primary: #3B82F6; /* blue-500 */
+    --color-primary-foreground: #F8FAFC; /* slate-50 */
+    
+    /* Secondary Colors */
+    --color-secondary: #475569; /* slate-600 */
+    --color-secondary-foreground: #F8FAFC; /* slate-50 */
+    
+    /* Accent Colors - Enhanced for dark mode */
+    --color-accent: #0EA5E9; /* sky-500 */
+    --color-accent-foreground: #F8FAFC; /* slate-50 */
+    
+    /* State Colors - Dark mode optimized */
+    --color-success: #10B981; /* emerald-500 */
+    --color-success-foreground: #F8FAFC; /* slate-50 */
+    --color-warning: #F59E0B; /* amber-500 */
+    --color-warning-foreground: #1F2937; /* gray-800 */
+    --color-error: #EF4444; /* red-500 */
+    --color-error-foreground: #F8FAFC; /* slate-50 */
+    --color-destructive: #EF4444; /* red-500 */
+    --color-destructive-foreground: #F8FAFC; /* slate-50 */
+    
+    /* UI Elements - Dark mode */
+    --color-border: #475569; /* slate-600 */
+    --color-input: #1E293B; /* slate-800 */
+    --color-ring: #3B82F6; /* blue-500 */
+    
+    /* Text Colors - Dark mode */
+    --color-text-primary: #F8FAFC; /* slate-50 */
+    --color-text-secondary: #CBD5E1; /* slate-300 */
+    --color-text-muted: #94A3B8; /* slate-400 */
+    
+    /* Surface Colors - Dark mode */
+    --color-surface: #1E293B; /* slate-800 */
+    --color-surface-foreground: #F8FAFC; /* slate-50 */
+  }
+
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Mobile-first responsive typography */
+  h1 {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+  
+  h2 {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+  
+  h3 {
+    @apply text-base sm:text-lg lg:text-xl;
+  }
+
+  /* Dark mode specific adjustments */
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark img {
+    opacity: 0.9;
+  }
+
+  .dark .sidebar-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark .card-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark .modal-shadow {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@layer components {
+  .sidebar-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .modal-shadow {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .transition-smooth {
+    transition: all 200ms ease-out;
+  }
+  
+  .transition-hover {
+    transition: all 150ms ease-in-out;
+  }
+  
+  .pulse-loading {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Enhanced responsive utilities */
+  .container-responsive {
+    @apply max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+
+  .text-responsive {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  .button-responsive {
+    @apply px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 text-sm sm:text-base;
+  }
+
+  .card-responsive {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+
+  /* Mobile-optimized spacing */
+  .spacing-mobile {
+    @apply space-y-2 sm:space-y-4 lg:space-y-6;
+  }
+
+  .margin-responsive {
+    @apply mb-4 sm:mb-6 lg:mb-8;
+  }
+
+  /* Touch-friendly elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .touch-button {
+    @apply touch-target px-4 py-3 sm:px-6 sm:py-2 text-center;
+  }
+
+  /* Mobile navigation specific */
+  .mobile-nav-item {
+    @apply block w-full px-4 py-3 text-left border-b border-border last:border-b-0;
+  }
+
+  /* Responsive table utilities */
+  .table-responsive {
+    @apply min-w-full overflow-x-auto;
+  }
+
+  .table-cell-mobile {
+    @apply px-2 py-3 sm:px-4 sm:py-4 text-xs sm:text-sm;
+  }
+
+  /* Floating action button positioning */
+  .fab-position {
+    @apply fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8;
+  }
+
+  /* Modal responsive sizing */
+  .modal-responsive {
+    @apply w-full max-w-md sm:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto;
+  }
+
+  /* Safe area insets for mobile devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Responsive form elements */
+  .form-responsive {
+    @apply w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base;
+  }
+
+  .form-group-responsive {
+    @apply space-y-2 sm:space-y-3 mb-4 sm:mb-6;
+  }
+
+  /* Theme transition animations */
+  .theme-transition {
+    transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out;
+  }
+}
+
+/* Enhanced responsive breakpoint utilities */
+@layer utilities {
+  /* Text scaling utilities */
+  .text-scale-xs {
+    @apply text-xs sm:text-sm lg:text-base;
+  }
+  
+  .text-scale-sm {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+  
+  .text-scale-md {
+    @apply text-base sm:text-lg lg:text-xl;
+  }
+  
+  .text-scale-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  /* Responsive spacing utilities */
+  .space-responsive-x {
+    @apply space-x-2 sm:space-x-4 lg:space-x-6;
+  }
+  
+  .space-responsive-y {
+    @apply space-y-2 sm:space-y-4 lg:space-y-6;
+  }
+
+  /* Responsive padding utilities */
+  .p-responsive {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+  
+  .px-responsive {
+    @apply px-3 sm:px-4 lg:px-6;
+  }
+  
+  .py-responsive {
+    @apply py-3 sm:py-4 lg:py-6;
+  }
+
+  /* Mobile-first hidden utilities */
+  .mobile-hidden {
+    @apply hidden sm:block;
+  }
+  
+  .desktop-hidden {
+    @apply block sm:hidden;
+  }
+  
+  .tablet-hidden {
+    @apply block sm:hidden lg:block;
+  }
+
+  /* Responsive flex utilities */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row;
+  }
+  
+  .flex-responsive-reverse {
+    @apply flex flex-col-reverse sm:flex-row;
+  }
+
+  /* Theme-aware utilities */
+.theme-bg-hover  {
+    
+  }
+
+  .theme-border-hover {
+    @apply hover:border-border dark:hover:border-border;
+  }
+
+  .theme-text-hover {
+    @apply hover:text-text-primary dark:hover:text-text-primary;
+  }
+}
