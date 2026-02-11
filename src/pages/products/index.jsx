@@ -17,7 +17,7 @@ const Products = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const authContext = useAuth();
-  const { currentCompany, user, loading: authLoading } = authContext || {};
+  const { currentCompany, currentRole, loading: authLoading } = authContext || {};
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -49,8 +49,7 @@ const Products = () => {
   // Products data from Supabase
   const [products, setProducts] = useState([]);
 
-  // Get current user role from user object
-  const currentRole = user?.role || 'user';
+  const effectiveRole = currentRole || 'user';
 
   // Real-time subscription for products
   useRealtimeSubscription({
@@ -58,19 +57,16 @@ const Products = () => {
     filter: currentCompany?.id ? { column: 'company_id', value: currentCompany?.id } : null,
     enabled: !!currentCompany?.id,
     onInsert: (newProduct) => {
-      console.log('New product added:', newProduct);
       // Convert snake_case to camelCase and add to list
       const camelCaseProduct = productService?.convertToCamelCase(newProduct);
       setProducts(prev => [camelCaseProduct, ...prev]);
     },
     onUpdate: (updatedProduct) => {
-      console.log('Product updated:', updatedProduct);
       // Convert and update in list
       const camelCaseProduct = productService?.convertToCamelCase(updatedProduct);
       setProducts(prev => prev?.map(p => p?.id === camelCaseProduct?.id ? camelCaseProduct : p));
     },
     onDelete: (deletedProduct) => {
-      console.log('Product deleted:', deletedProduct);
       // Remove from list
       setProducts(prev => prev?.filter(p => p?.id !== deletedProduct?.id));
     }
@@ -82,7 +78,6 @@ const Products = () => {
     filter: currentCompany?.id ? { column: 'company_id', value: currentCompany?.id } : null,
     enabled: !!currentCompany?.id,
     onInsert: (newMovement) => {
-      console.log('New stock movement:', newMovement);
       // Reload products to get updated quantities
       loadProducts();
     }
@@ -90,37 +85,30 @@ const Products = () => {
 
   // Load products from Supabase
   useEffect(() => {
-    console.log('[Products] useEffect triggered - authLoading:', authLoading, 'currentCompany:', currentCompany);
     
     if (authLoading) {
       // Wait for auth to finish loading
-      console.log('[Products] Waiting for auth to finish loading...');
       return;
     }
     
     if (currentCompany?.id) {
-      console.log('[Products] Loading products for company:', currentCompany?.id);
       loadProducts();
     } else {
       // No company available, stop loading
-      console.log('[Products] No company available, stopping loading state');
       setIsLoading(false);
     }
   }, [currentCompany, authLoading]);
 
   const loadProducts = async () => {
     try {
-      console.log('[Products] Starting to load products...');
       setIsLoading(true);
       setError(null);
       const data = await productService?.getProducts(currentCompany?.id);
-      console.log('[Products] Products loaded:', data?.length || 0);
       setProducts(data);
     } catch (err) {
       console.error('[Products] Error loading products:', err);
       setError('Erreur lors du chargement des produits');
     } finally {
-      console.log('[Products] Finished loading products');
       setIsLoading(false);
     }
   };
@@ -217,7 +205,6 @@ const Products = () => {
   };
 
   const handleBulkAction = (action, productIds) => {
-    console.log('Bulk action:', action, 'Products:', productIds);
     // Implement bulk actions here
     setSelectedProducts([]);
   };
@@ -339,7 +326,7 @@ const Products = () => {
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         userRole={currentRole || 'user'}
-        currentTenant={currentCompany?.name || 'StockFlow Pro'} />
+        currentTenant={currentCompany || { name: 'StockFlow Pro' }} />
 
       {/* Enhanced Main Content with responsive layout */}
       <div className={`transition-all duration-200 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
@@ -360,7 +347,7 @@ const Products = () => {
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <QuickActionBar
                   variant="header"
-                  userRole="company_admin" />
+                  userRole={effectiveRole} />
               </div>
             </div>
           </div>
@@ -461,7 +448,7 @@ const Products = () => {
       {/* Enhanced Quick Action Bar with responsive positioning */}
       <QuickActionBar
         variant="floating"
-        userRole="company_admin" />
+        userRole={effectiveRole} />
 
       {/* Product Modal with responsive sizing */}
       <ProductModal

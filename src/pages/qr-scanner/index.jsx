@@ -8,6 +8,7 @@ import CameraView from './components/CameraView';
 import ManualInput from './components/ManualInput';
 import ScanInstructions from './components/ScanInstructions';
 import ScanResults from './components/ScanResults';
+import { useAuth } from '../../contexts/AuthContext';
 
 const QRScanner = () => {
   const navigate = useNavigate();
@@ -18,8 +19,7 @@ const QRScanner = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('camera');
-  const [currentRole, setCurrentRole] = useState('user');
-  const [currentCompany, setCurrentCompany] = useState({ name: 'StockFlow Pro' });
+  const { currentRole, currentCompany } = useAuth();
 
   const translations = {
     fr: {
@@ -112,7 +112,7 @@ const QRScanner = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         userRole={currentRole || 'user'}
-        currentTenant={currentCompany?.name || 'StockFlow Pro'}
+        currentTenant={currentCompany}
       />
       {/* Main Content */}
       <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
@@ -258,7 +258,7 @@ const QRScanner = () => {
       {/* Quick Action Bar */}
       <QuickActionBar
         variant="floating"
-        userRole="team_member"
+        userRole={currentRole}
       />
     </div>
   );

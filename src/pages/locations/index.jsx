@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import ResponsiveGrid from '../../components/ResponsiveGrid';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LocationsPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -23,9 +24,8 @@ const LocationsPage = () => {
     status: 'all'
   });
 
-  // Mock user data
-  const userRole = 'company_admin';
-  const currentTenant = 'TechCorp Solutions';
+  const { currentRole, currentCompany } = useAuth();
+  const userRole = currentRole || 'user';
 
   // Mock locations data
   const mockLocations = [
@@ -218,8 +218,8 @@ const LocationsPage = () => {
         <SidebarNavigation
           isCollapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          userRole={userRole}
-          currentTenant={currentTenant}
+          userRole={currentRole}
+          currentTenant={currentCompany}
         />
 
         <main className={`
@@ -246,7 +246,7 @@ const LocationsPage = () => {
                 >
                   Exporter
                 </Button>
-                {['super_admin', 'company_admin']?.includes(userRole) && (
+                {['super_admin', 'administrator']?.includes(userRole) && (
                   <Button
                     onClick={() => setShowAddModal(true)}
                     iconName="Plus"
@@ -368,7 +368,7 @@ const LocationsPage = () => {
                             <Icon name="User" size={12} />
                             <span>{location?.manager}</span>
                           </div>
-                          {['super_admin', 'company_admin']?.includes(userRole) && (
+                          {['super_admin', 'administrator']?.includes(userRole) && (
                             <div className="flex items-center space-x-1">
                               <Button
                                 variant="ghost"
@@ -407,7 +407,7 @@ const LocationsPage = () => {
           </div>
         </main>
 
-        <QuickActionBar variant="floating" userRole={userRole} />
+        <QuickActionBar variant="floating" userRole={currentRole} />
       </div>
     </>
   );

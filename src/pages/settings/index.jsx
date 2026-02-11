@@ -55,11 +55,17 @@ const Settings = () => {
   }, []);
 
   const hasAccess = (roles) => {
-    if (!currentRole) return true;
+    if (!currentRole) return false;
     return roles?.includes(currentRole);
   };
 
   const accessibleTabs = tabs?.filter((tab) => hasAccess(tab?.roles));
+
+  useEffect(() => {
+    if (!accessibleTabs?.some((tab) => tab?.id === activeTab) && accessibleTabs?.length > 0) {
+      setActiveTab(accessibleTabs?.[0]?.id);
+    }
+  }, [accessibleTabs, activeTab]);
 
   const handleSave = async (section, data) => {
     try {
@@ -68,7 +74,6 @@ const Settings = () => {
       const now = new Date();
       setLastSaved(now);
       localStorage.setItem('settingsLastSaved', now?.toISOString());
-      console.log(`Settings saved for ${section}:`, data);
       return { success: true };
     } catch (error) {
       console.error('Error saving settings:', error);

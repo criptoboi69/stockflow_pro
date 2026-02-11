@@ -11,6 +11,7 @@ const SidebarNavigation = ({
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+  const tenantName = typeof currentTenant === 'string' ? currentTenant : currentTenant?.name;
 
   const navigationItems = [
   {
@@ -96,8 +97,8 @@ const SidebarNavigation = ({
 
 
   const hasAccess = (roles) => {
-    // If userRole is not yet loaded (null/undefined), show all items
-    if (!userRole) return true;
+    // If role is unknown, hide restricted items by default
+    if (!userRole) return false;
     return roles?.includes(userRole);
   };
 
@@ -175,7 +176,7 @@ const SidebarNavigation = ({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-text-primary">StockFlow</h2>
-                <p className="text-xs text-text-muted">{currentTenant?.name || 'StockFlow Pro'}</p>
+                <p className="text-xs text-text-muted">{tenantName || 'StockFlow Pro'}</p>
               </div>
             </div>
           }

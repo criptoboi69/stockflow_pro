@@ -8,7 +8,7 @@ import ProgressTracker from './components/ProgressTracker';
 import OperationHistory from './components/OperationHistory';
 import ValidationRules from './components/ValidationRules';
 import RateLimitIndicator from './components/RateLimitIndicator';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 
 const DataManagement = () => {
@@ -16,9 +16,8 @@ const DataManagement = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentOperation, setCurrentOperation] = useState(null);
 
-  // Mock user data
-  const userRole = 'company_admin';
-  const currentTenant = 'TechCorp Solutions';
+  const userRole = currentRole || 'user';
+  const currentTenant = currentCompany || { name: 'StockFlow Pro' };
 
   const handleImportStart = (file) => {
     const mockOperation = {

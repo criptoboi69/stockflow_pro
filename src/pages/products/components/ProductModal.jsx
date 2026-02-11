@@ -185,7 +185,6 @@ const ProductModal = ({
   };
 
   const handleQRGenerated = (qrData, qrConfig) => {
-    console.log('QR Code generated:', { qrData, qrConfig });
     setShowQRGenerator(false);
   };
 

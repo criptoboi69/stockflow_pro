@@ -84,7 +84,7 @@ const MovementFilters = ({
             )}
           </Button>
 
-          {['super_admin', 'company_admin']?.includes(userRole) && (
+          {['super_admin', 'administrator']?.includes(userRole) && (
             <Button
               variant="outline"
               onClick={onExport}

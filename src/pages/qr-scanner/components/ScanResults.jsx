@@ -97,7 +97,7 @@ const ScanResults = ({
   };
 
   const handleViewDetails = () => {
-    navigate(`/products/${mockProduct?.id}`);
+    navigate(`/products?search=${encodeURIComponent(mockProduct?.sku)}`);
   };
 
   if (!result) return null;
