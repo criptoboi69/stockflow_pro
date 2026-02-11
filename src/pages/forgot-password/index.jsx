@@ -108,7 +108,7 @@ const ForgotPasswordPage = () => {
               {/* Header */}
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
-                  <Icon name="lock" className="w-8 h-8 text-primary" />
+                  <Icon name="Lock" className="w-8 h-8 text-primary" />
                 </div>
                 <h1 className="text-2xl font-bold text-text-primary mb-2">
                   {t?.heading}
@@ -121,7 +121,7 @@ const ForgotPasswordPage = () => {
               {/* Success Message */}
               {success && (
                 <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-start space-x-3">
-                  <Icon name="check-circle" className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  <Icon name="CheckCircle" className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-800 dark:text-green-200">
                     {t?.successMessage}
                   </p>
@@ -131,7 +131,7 @@ const ForgotPasswordPage = () => {
               {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start space-x-3">
-                  <Icon name="alert-circle" className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <Icon name="AlertCircle" className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-red-800 dark:text-red-200">
                     {error}
                   </p>
@@ -151,7 +151,7 @@ const ForgotPasswordPage = () => {
                     placeholder={t?.emailPlaceholder}
                     disabled={isLoading || success}
                     className="w-full"
-                    leftIcon={<Icon name="mail" className="w-5 h-5 text-text-muted" />}
+                    leftIcon={<Icon name="Mail" className="w-5 h-5 text-text-muted" />}
                   />
                 </div>
 
@@ -164,12 +164,12 @@ const ForgotPasswordPage = () => {
                 >
                   {isLoading ? (
                     <>
-                      <Icon name="loader" className="w-5 h-5 animate-spin" />
+                      <Icon name="Loader" className="w-5 h-5 animate-spin" />
                       <span className="ml-2">{currentLanguage === 'fr' ? 'Envoi...' : 'Sending...'}</span>
                     </>
                   ) : (
                     <>
-                      <Icon name="send" className="w-5 h-5" />
+                      <Icon name="Send" className="w-5 h-5" />
                       <span className="ml-2">{t?.sendButton}</span>
                     </>
                   )}
@@ -182,7 +182,7 @@ const ForgotPasswordPage = () => {
                   to="/login"
                   className="inline-flex items-center text-sm text-primary hover:text-primary-dark transition-colors"
                 >
-                  <Icon name="arrow-left" className="w-4 h-4 mr-2" />
+                  <Icon name="ArrowLeft" className="w-4 h-4 mr-2" />
                   {t?.backToLogin}
                 </Link>
               </div>
@@ -191,7 +191,7 @@ const ForgotPasswordPage = () => {
             {/* Security Note */}
             <div className="mt-6 text-center">
               <div className="inline-flex items-center space-x-2 text-xs text-text-muted">
-                <Icon name="shield-check" className="w-4 h-4" />
+                <Icon name="ShieldCheck" className="w-4 h-4" />
                 <span>
                   {currentLanguage === 'fr' ?'Lien sécurisé valide pendant 1 heure' :'Secure link valid for 1 hour'}
                 </span>

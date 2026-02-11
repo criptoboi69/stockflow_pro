@@ -195,7 +195,7 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
   if (!isOpen) return null;
 
   // Check permissions
-  const canCreate = ['super_admin', 'company_admin']?.includes(userRole);
+  const canCreate = ['super_admin', 'administrator']?.includes(userRole);
   if (!canCreate) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

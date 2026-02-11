@@ -312,7 +312,7 @@ const UserManagement = () => {
                 </Button>
               </div>
 
-              {(['super_admin', 'company_admin']?.includes(currentRole)) && (
+              {(['super_admin', 'administrator']?.includes(currentRole)) && (
                 <Button
                   variant="default"
                   onClick={() => setIsAddModalOpen(true)}

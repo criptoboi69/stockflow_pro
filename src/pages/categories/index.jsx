@@ -5,15 +5,14 @@ import QuickActionBar from '../../components/ui/QuickActionBar';
 import CategoryQuickAdd from './components/CategoryQuickAdd';
 import CategoryList from './components/CategoryList';
 import CategoryStats from './components/CategoryStats';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CategoriesPage = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Add these declarations
-  const currentRole = 'company_admin'; // or retrieve from context/props
-  const currentCompany = { name: 'StockFlow Pro' }; // or retrieve from context/props
+  const { currentRole, currentCompany } = useAuth();
 
   // Mock data for categories
   const mockCategories = [
@@ -226,7 +225,7 @@ const CategoriesPage = () => {
         {/* Quick Action Bar */}
         <QuickActionBar
           variant="floating"
-          userRole="company_admin"
+          userRole={currentRole}
         />
       </div>
     </>

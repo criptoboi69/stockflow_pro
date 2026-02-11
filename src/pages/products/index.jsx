@@ -17,7 +17,7 @@ const Products = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const authContext = useAuth();
-  const { currentCompany, user, loading: authLoading } = authContext || {};
+  const { currentCompany, currentRole, loading: authLoading } = authContext || {};
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -49,8 +49,7 @@ const Products = () => {
   // Products data from Supabase
   const [products, setProducts] = useState([]);
 
-  // Get current user role from user object
-  const currentRole = user?.role || 'user';
+  const effectiveRole = currentRole || 'user';
 
   // Real-time subscription for products
   useRealtimeSubscription({
@@ -360,7 +359,7 @@ const Products = () => {
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <QuickActionBar
                   variant="header"
-                  userRole="company_admin" />
+                  userRole={effectiveRole} />
               </div>
             </div>
           </div>
@@ -461,7 +460,7 @@ const Products = () => {
       {/* Enhanced Quick Action Bar with responsive positioning */}
       <QuickActionBar
         variant="floating"
-        userRole="company_admin" />
+        userRole={effectiveRole} />
 
       {/* Product Modal with responsive sizing */}
       <ProductModal

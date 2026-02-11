@@ -16,7 +16,7 @@ import MovementDetailsModal from './components/MovementDetailsModal';
 const StockMovements = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentCompany, user, loading: authLoading } = useAuth();
+  const { currentCompany, currentRole, user, loading: authLoading } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [movements, setMovements] = useState([]);
@@ -31,8 +31,7 @@ const StockMovements = () => {
 
   const itemsPerPage = 20;
 
-  // Get current user role from user object
-  const currentRole = user?.role || 'user';
+  const effectiveRole = currentRole || 'user';
 
   // Real-time subscription for stock movements
   useRealtimeSubscription({
@@ -222,7 +221,7 @@ const StockMovements = () => {
       <SidebarNavigation
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        userRole={currentRole}
+        userRole={effectiveRole}
         currentTenant={currentCompany?.name} />
 
       <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
@@ -249,7 +248,7 @@ const StockMovements = () => {
                 Scanner QR
               </Button>
               
-              {['super_admin', 'company_admin']?.includes(currentRole) && (
+              {['super_admin', 'administrator']?.includes(effectiveRole) && (
                 <Button
                   onClick={handleNewMovement}
                   iconName="Plus"
@@ -265,7 +264,7 @@ const StockMovements = () => {
             onFilterChange={handleFilterChange}
             onExport={handleExport}
             totalMovements={filteredMovements?.length}
-            userRole={currentRole} />
+            userRole={effectiveRole} />
 
           {/* Timeline */}
           <div className="bg-surface border border-border rounded-lg">
@@ -286,7 +285,7 @@ const StockMovements = () => {
                 movements={paginatedMovements}
                 onEditMovement={handleEditMovement}
                 onViewDetails={handleViewDetails}
-                userRole={currentRole}
+                userRole={effectiveRole}
                 isLoading={isLoading} />
 
               {/* Pagination */}
@@ -345,14 +344,14 @@ const StockMovements = () => {
       {/* Quick Action Bar */}
       <QuickActionBar
         variant="floating"
-        userRole={currentRole} />
+        userRole={effectiveRole} />
 
       {/* New Movement Modal */}
       <NewMovementModal
         isOpen={isNewMovementModalOpen}
         onClose={() => setIsNewMovementModalOpen(false)}
         onSave={handleSaveNewMovement}
-        userRole={currentRole} />
+        userRole={effectiveRole} />
 
       {/* Movement Details Modal */}
       <MovementDetailsModal
@@ -372,7 +371,7 @@ const StockMovements = () => {
         }}
         movement={selectedMovement}
         onSave={handleSaveAdjustment}
-        userRole={currentRole} />
+        userRole={effectiveRole} />
 
     </div>
   );

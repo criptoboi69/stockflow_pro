@@ -384,13 +384,12 @@ const LoginForm = ({
           )}
           
           {!isSignUpMode && (
-            <button
-              type="button"
+            <Link
+              to="/forgot-password"
               className="text-sm text-primary hover:text-primary/80 transition-colors"
-              disabled={isLoading}
             >
               {t?.forgotPassword}
-            </button>
+            </Link>
           )}
         </div>
 
@@ -424,18 +423,6 @@ const LoginForm = ({
           </p>
         </div>
 
-        {/* Forgot Password Link */}
-        {!isSignUpMode && (
-          <div className="mt-4 text-center">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-primary hover:text-primary-dark transition-colors inline-flex items-center"
-            >
-              <Icon name="help-circle" className="w-4 h-4 mr-1" />
-              {t?.forgotPassword}
-            </Link>
-          </div>
-        )}
       </form>
       {/* Magic Link Section */}
       {/* <div className="mt-8 pt-6 border-t border-border">

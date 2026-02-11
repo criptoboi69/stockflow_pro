@@ -261,7 +261,7 @@ const NotificationSettingsTab = ({ userRole, onSave }) => {
         </div>
       </div>
       {/* Webhook Integration */}
-      {(userRole === 'super_admin' || userRole === 'company_admin') && (
+      {(userRole === 'super_admin' || userRole === 'administrator') && (
         <div className="bg-card rounded-lg border border-border p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
