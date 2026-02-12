@@ -13,7 +13,8 @@ const ProductFilters = ({
   onCategoryChange,
   onClearFilters,
   resultCount = 0,
-  isLoading = false
+  isLoading = false,
+  searchInputRef
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -60,6 +61,8 @@ const ProductFilters = ({
         {/* Search Input */}
         <div className="flex-1 lg:max-w-md">
           <Input
+            ref={searchInputRef}
+            data-search-input
             type="search"
             placeholder="Rechercher par nom, SKU ou catégorie..."
             value={searchQuery}

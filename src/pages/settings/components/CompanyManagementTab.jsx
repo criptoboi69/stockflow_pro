@@ -5,7 +5,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 
-const CompanyManagementTab = ({ userRole, onSave }) => {
+const CompanyManagementTab = ({ userRole, companies: authCompanies = [], onSave }) => {
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -31,75 +31,6 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
     }
   });
 
-  // Mock companies data
-  const mockCompanies = [
-    {
-      id: 1,
-      name: "TechCorp Solutions",
-      email: "admin@techcorp.fr",
-      phone: "+33 1 23 45 67 89",
-      address: "123 Avenue des Champs-Élysées",
-      city: "Paris",
-      postalCode: "75008",
-      country: "France",
-      timezone: "Europe/Paris",
-      maxUsers: 25,
-      currentUsers: 12,
-      status: "active",
-      createdAt: "2024-01-15",
-      features: {
-        qrScanning: true,
-        csvImport: true,
-        webhooks: true,
-        apiAccess: true,
-        customReports: true
-      }
-    },
-    {
-      id: 2,
-      name: "Logistics Pro SARL",
-      email: "contact@logisticspro.fr",
-      phone: "+33 4 56 78 90 12",
-      address: "456 Rue de la République",
-      city: "Lyon",
-      postalCode: "69002",
-      country: "France",
-      timezone: "Europe/Brussels",
-      maxUsers: 15,
-      currentUsers: 8,
-      status: "active",
-      createdAt: "2024-02-20",
-      features: {
-        qrScanning: true,
-        csvImport: true,
-        webhooks: false,
-        apiAccess: false,
-        customReports: true
-      }
-    },
-    {
-      id: 3,
-      name: "Retail Express",
-      email: "info@retailexpress.be",
-      phone: "+32 2 345 67 89",
-      address: "789 Boulevard Anspach",
-      city: "Bruxelles",
-      postalCode: "1000",
-      country: "Belgique",
-      timezone: "Europe/Brussels",
-      maxUsers: 5,
-      currentUsers: 3,
-      status: "trial",
-      createdAt: "2024-10-01",
-      features: {
-        qrScanning: true,
-        csvImport: false,
-        webhooks: false,
-        apiAccess: false,
-        customReports: false
-      }
-    }
-  ];
 
   const countryOptions = [
     { value: 'France', label: 'France' },
@@ -115,22 +46,40 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
   ];
 
   useEffect(() => {
-    if (userRole === 'super_admin') {
-      setIsLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setCompanies(mockCompanies);
-        setIsLoading(false);
-      }, 1000);
-    }
-  }, [userRole]);
+    if (userRole !== 'super_admin') return;
+
+    setIsLoading(true);
+    const normalizedCompanies = (authCompanies || []).map((company, index) => ({
+      id: company?.company_id || company?.id || `company-${index + 1}`,
+      name: company?.company_name || company?.name || `Entreprise ${index + 1}`,
+      email: company?.email || '',
+      phone: company?.phone || '',
+      address: company?.address || '',
+      city: company?.city || '',
+      postalCode: company?.postalCode || '',
+      country: company?.country || 'France',
+      timezone: company?.timezone || 'Europe/Paris',
+      maxUsers: company?.maxUsers || 10,
+      currentUsers: company?.currentUsers || 0,
+      status: company?.status || 'active',
+      createdAt: company?.createdAt || new Date().toISOString().split('T')[0],
+      features: company?.features || {
+        qrScanning: true,
+        csvImport: true,
+        webhooks: false,
+        apiAccess: false,
+        customReports: false
+      }
+    }));
+
+    setCompanies(normalizedCompanies);
+    setIsLoading(false);
+  }, [userRole, authCompanies]);
 
   const handleCreateCompany = async () => {
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       const company = {
         ...newCompany,
         id: companies?.length + 1,
@@ -139,7 +88,8 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
         createdAt: new Date()?.toISOString()?.split('T')?.[0]
       };
       
-      setCompanies(prev => [...prev, company]);
+      const nextCompanies = [...companies, company];
+      setCompanies(nextCompanies);
       setNewCompany({
         name: '',
         email: '',
@@ -159,7 +109,7 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
         }
       });
       setShowCreateForm(false);
-      await onSave('companies', companies);
+      await onSave('companies', nextCompanies);
     } catch (error) {
       console.error('Error creating company:', error);
     } finally {
@@ -170,12 +120,11 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
   const handleUpdateCompany = async (companyId, updates) => {
     setIsSaving(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setCompanies(prev => prev?.map(company => 
         company?.id === companyId ? { ...company, ...updates } : company
       ));
-      await onSave('companies', companies);
+      await onSave('companies', nextCompanies);
     } catch (error) {
       console.error('Error updating company:', error);
     } finally {

@@ -5,11 +5,12 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
+import { getStoredLanguage, persistLanguage } from '../../utils/language';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const [currentLanguage, setCurrentLanguage] = useState(
-    localStorage.getItem('currentLanguage') || 'fr'
+    getStoredLanguage()
   );
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -153,10 +154,7 @@ const ResetPasswordPage = () => {
         setError(updateError?.message || t?.errorMessage);
       } else {
         setSuccess(true);
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+        navigate('/login');
       }
     } catch (err) {
       console.error('Password reset error:', err);
@@ -172,7 +170,7 @@ const ResetPasswordPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Icon name="loader" className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <Icon name="Loader" className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-text-muted">{t?.checkingToken}</p>
         </div>
       </div>
@@ -185,7 +183,7 @@ const ResetPasswordPage = () => {
         <div className="w-full max-w-md">
           <div className="bg-surface rounded-2xl border border-border card-shadow p-8 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full mb-4">
-              <Icon name="alert-circle" className="w-8 h-8 text-red-600 dark:text-red-400" />
+              <Icon name="AlertCircle" className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
             <h1 className="text-xl font-bold text-text-primary mb-2">
               {currentLanguage === 'fr' ? 'Lien invalide' : 'Invalid Link'}
@@ -200,7 +198,7 @@ const ResetPasswordPage = () => {
               to="/login"
               className="inline-flex items-center mt-4 text-sm text-primary hover:text-primary-dark transition-colors"
             >
-              <Icon name="arrow-left" className="w-4 h-4 mr-2" />
+              <Icon name="ArrowLeft" className="w-4 h-4 mr-2" />
               {t?.backToLogin}
             </Link>
           </div>
@@ -228,7 +226,7 @@ const ResetPasswordPage = () => {
               {/* Header */}
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
-                  <Icon name="key" className="w-8 h-8 text-primary" />
+                  <Icon name="Key" className="w-8 h-8 text-primary" />
                 </div>
                 <h1 className="text-2xl font-bold text-text-primary mb-2">
                   {t?.heading}
@@ -241,7 +239,7 @@ const ResetPasswordPage = () => {
               {/* Success Message */}
               {success && (
                 <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-start space-x-3">
-                  <Icon name="check-circle" className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  <Icon name="CheckCircle" className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-800 dark:text-green-200">
                     {t?.successMessage}
                   </p>
@@ -251,7 +249,7 @@ const ResetPasswordPage = () => {
               {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start space-x-3">
-                  <Icon name="alert-circle" className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <Icon name="AlertCircle" className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-red-800 dark:text-red-200">
                     {error}
                   </p>
@@ -273,14 +271,14 @@ const ResetPasswordPage = () => {
                       placeholder={t?.passwordPlaceholder}
                       disabled={isLoading || success}
                       className="w-full pr-10"
-                      leftIcon={<Icon name="lock" className="w-5 h-5 text-text-muted" />}
+                      leftIcon={<Icon name="Lock" className="w-5 h-5 text-text-muted" />}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
                     >
-                      <Icon name={showPassword ? 'eye-off' : 'eye'} className="w-5 h-5" />
+                      <Icon name={showPassword ? 'EyeOff' : 'Eye'} className="w-5 h-5" />
                     </button>
                   </div>
                   
@@ -325,14 +323,14 @@ const ResetPasswordPage = () => {
                       placeholder={t?.confirmPasswordPlaceholder}
                       disabled={isLoading || success}
                       className="w-full pr-10"
-                      leftIcon={<Icon name="lock" className="w-5 h-5 text-text-muted" />}
+                      leftIcon={<Icon name="Lock" className="w-5 h-5 text-text-muted" />}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
                     >
-                      <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} className="w-5 h-5" />
+                      <Icon name={showConfirmPassword ? 'EyeOff' : 'Eye'} className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -343,7 +341,7 @@ const ResetPasswordPage = () => {
                   <ul className="space-y-1">
                     <li className="flex items-center text-xs text-text-muted">
                       <Icon
-                        name={password?.length >= 8 ? 'check-circle' : 'circle'}
+                        name={password?.length >= 8 ? 'CheckCircle' : 'Circle'}
                         className={`w-4 h-4 mr-2 ${
                           password?.length >= 8 ? 'text-green-500' : 'text-gray-400'
                         }`}
@@ -352,7 +350,7 @@ const ResetPasswordPage = () => {
                     </li>
                     <li className="flex items-center text-xs text-text-muted">
                       <Icon
-                        name={/[A-Z]/?.test(password) ? 'check-circle' : 'circle'}
+                        name={/[A-Z]/?.test(password) ? 'CheckCircle' : 'Circle'}
                         className={`w-4 h-4 mr-2 ${
                           /[A-Z]/?.test(password) ? 'text-green-500' : 'text-gray-400'
                         }`}
@@ -361,7 +359,7 @@ const ResetPasswordPage = () => {
                     </li>
                     <li className="flex items-center text-xs text-text-muted">
                       <Icon
-                        name={/[a-z]/?.test(password) ? 'check-circle' : 'circle'}
+                        name={/[a-z]/?.test(password) ? 'CheckCircle' : 'Circle'}
                         className={`w-4 h-4 mr-2 ${
                           /[a-z]/?.test(password) ? 'text-green-500' : 'text-gray-400'
                         }`}
@@ -370,7 +368,7 @@ const ResetPasswordPage = () => {
                     </li>
                     <li className="flex items-center text-xs text-text-muted">
                       <Icon
-                        name={/[0-9]/?.test(password) ? 'check-circle' : 'circle'}
+                        name={/[0-9]/?.test(password) ? 'CheckCircle' : 'Circle'}
                         className={`w-4 h-4 mr-2 ${
                           /[0-9]/?.test(password) ? 'text-green-500' : 'text-gray-400'
                         }`}
@@ -389,12 +387,12 @@ const ResetPasswordPage = () => {
                 >
                   {isLoading ? (
                     <>
-                      <Icon name="loader" className="w-5 h-5 animate-spin" />
+                      <Icon name="Loader" className="w-5 h-5 animate-spin" />
                       <span className="ml-2">{currentLanguage === 'fr' ? 'Réinitialisation...' : 'Resetting...'}</span>
                     </>
                   ) : (
                     <>
-                      <Icon name="check" className="w-5 h-5" />
+                      <Icon name="Check" className="w-5 h-5" />
                       <span className="ml-2">{t?.resetButton}</span>
                     </>
                   )}
@@ -407,7 +405,7 @@ const ResetPasswordPage = () => {
                   to="/login"
                   className="inline-flex items-center text-sm text-primary hover:text-primary-dark transition-colors"
                 >
-                  <Icon name="arrow-left" className="w-4 h-4 mr-2" />
+                  <Icon name="ArrowLeft" className="w-4 h-4 mr-2" />
                   {t?.backToLogin}
                 </Link>
               </div>
@@ -416,7 +414,7 @@ const ResetPasswordPage = () => {
             {/* Security Note */}
             <div className="mt-6 text-center">
               <div className="inline-flex items-center space-x-2 text-xs text-text-muted">
-                <Icon name="shield-check" className="w-4 h-4" />
+                <Icon name="ShieldCheck" className="w-4 h-4" />
                 <span>
                   {currentLanguage === 'fr' ?'Connexion sécurisée SSL/TLS' :'Secure SSL/TLS connection'}
                 </span>

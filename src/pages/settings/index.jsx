@@ -9,6 +9,7 @@ import NotificationSettingsTab from './components/NotificationSettingsTab';
 import CompanyManagementTab from './components/CompanyManagementTab';
 import UserPreferencesTab from './components/UserPreferencesTab';
 import { useAuth } from '../../contexts/AuthContext';
+import { getLocalStorageJson } from '../../utils/storage';
 
 const Settings = () => {
   const { currentRole, currentCompany, companies, switchCompany, user } = useAuth();
@@ -55,20 +56,24 @@ const Settings = () => {
   }, []);
 
   const hasAccess = (roles) => {
-    if (!currentRole) return true;
+    if (!currentRole) return false;
     return roles?.includes(currentRole);
   };
 
   const accessibleTabs = tabs?.filter((tab) => hasAccess(tab?.roles));
 
+  useEffect(() => {
+    if (!accessibleTabs?.some((tab) => tab?.id === activeTab) && accessibleTabs?.length > 0) {
+      setActiveTab(accessibleTabs?.[0]?.id);
+    }
+  }, [accessibleTabs, activeTab]);
+
   const handleSave = async (section, data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       localStorage.setItem(`settings_${section}`, JSON.stringify(data));
       const now = new Date();
       setLastSaved(now);
       localStorage.setItem('settingsLastSaved', now?.toISOString());
-      console.log(`Settings saved for ${section}:`, data);
       return { success: true };
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -78,10 +83,10 @@ const Settings = () => {
 
   const handleExportAllSettings = () => {
     const allSettings = {
-      general: JSON.parse(localStorage.getItem('settings_general') || '{}'),
-      notifications: JSON.parse(localStorage.getItem('settings_notifications') || '{}'),
-      companies: JSON.parse(localStorage.getItem('settings_companies') || '{}'),
-      preferences: JSON.parse(localStorage.getItem('settings_preferences') || '{}'),
+      general: getLocalStorageJson('settings_general', {}),
+      notifications: getLocalStorageJson('settings_notifications', {}),
+      companies: getLocalStorageJson('settings_companies', {}),
+      preferences: getLocalStorageJson('settings_preferences', {}),
       exportedAt: new Date()?.toISOString(),
       userRole: currentRole,
       tenant: currentCompany?.name
@@ -103,11 +108,11 @@ const Settings = () => {
       case 'notifications':
         return <NotificationSettingsTab userRole={currentRole} onSave={handleSave} />;
       case 'companies':
-        return <CompanyManagementTab userRole={currentRole} onSave={handleSave} />;
+        return <CompanyManagementTab userRole={currentRole} companies={companies} onSave={handleSave} />;
       case 'preferences':
         return <UserPreferencesTab
           userRole={currentRole}
-          currentTenant={currentCompany?.name}
+          currentTenant={currentCompany || { name: 'StockFlow Pro' }}
           companies={companies}
           onSwitchCompany={switchCompany}
           onSave={handleSave}
@@ -130,7 +135,7 @@ const Settings = () => {
           isCollapsed={isCollapsed}
           onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
           userRole={currentRole}
-          currentTenant={currentCompany?.name || 'StockFlow Pro'}
+          currentTenant={currentCompany || { name: 'StockFlow Pro' }}
         />
 
         {/* Main Content */}

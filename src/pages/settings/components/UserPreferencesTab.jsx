@@ -5,6 +5,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { useTheme } from '../../../hooks/useTheme';
+import { getLocalStorageJson } from '../../../utils/storage';
 
 const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompany, onSave }) => {
   const { theme, changeTheme, getCurrentTheme, isDark } = useTheme();
@@ -121,17 +122,11 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
 
   useEffect(() => {
     // Load preferences from localStorage
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
-      try {
-        const parsed = JSON.parse(savedPreferences);
-        setPreferences(parsed);
-        // Sync theme with theme provider
-        if (parsed?.interface?.theme && parsed?.interface?.theme !== theme) {
-          changeTheme(parsed?.interface?.theme);
-        }
-      } catch (error) {
-        console.error('Error loading preferences:', error);
+    const parsed = getLocalStorageJson('userPreferences', null);
+    if (parsed) {
+      setPreferences(parsed);
+      if (parsed?.interface?.theme && parsed?.interface?.theme !== theme) {
+        changeTheme(parsed?.interface?.theme);
       }
     }
 
@@ -204,13 +199,8 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
 
     setUploadingAvatar(true);
     try {
-      // Simulate file upload
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create a mock URL for the uploaded avatar
-      const mockAvatarUrl = `https://randomuser.me/api/portraits/men/${Math.floor(Math.random() * 50)}.jpg`;
-      
-      handlePersonalInfoChange('avatar', mockAvatarUrl);
+      const localAvatarUrl = URL.createObjectURL(file);
+      handlePersonalInfoChange('avatar', localAvatarUrl);
     } catch (error) {
       console.error('Error uploading avatar:', error);
     } finally {
@@ -232,11 +222,9 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
   };
 
   const handleReset = () => {
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
-      const parsed = JSON.parse(savedPreferences);
+    const parsed = getLocalStorageJson('userPreferences', null);
+    if (parsed) {
       setPreferences(parsed);
-      // Reset theme to saved preference
       if (parsed?.interface?.theme) {
         changeTheme(parsed?.interface?.theme);
       }

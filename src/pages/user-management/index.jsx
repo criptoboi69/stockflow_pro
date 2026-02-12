@@ -274,7 +274,7 @@ const UserManagement = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         userRole={currentRole}
-        currentTenant={currentCompany?.name} 
+        currentTenant={currentCompany || { name: 'StockFlow Pro' }} 
       />
 
       <div className={`transition-all duration-200 ${
@@ -312,7 +312,7 @@ const UserManagement = () => {
                 </Button>
               </div>
 
-              {(['super_admin', 'company_admin']?.includes(currentRole)) && (
+              {(['super_admin', 'administrator']?.includes(currentRole)) && (
                 <Button
                   variant="default"
                   onClick={() => setIsAddModalOpen(true)}

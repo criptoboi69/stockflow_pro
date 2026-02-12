@@ -6,14 +6,8 @@ const ImportSection = ({ onImportStart, isImporting }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewRows, setPreviewRows] = useState([]);
   const fileInputRef = useRef(null);
-
-  const mockPreviewData = [
-    { row: 1, name: "Laptop Dell XPS 13", sku: "DELL-XPS-001", category: "Electronics", quantity: 15, status: "valid" },
-    { row: 2, name: "Office Chair", sku: "CHAIR-001", category: "Furniture", quantity: 8, status: "valid" },
-    { row: 3, name: "", sku: "INVALID-001", category: "Electronics", quantity: -5, status: "error", errors: ["Name is required", "Quantity cannot be negative"] },
-    { row: 4, name: "Wireless Mouse", sku: "MOUSE-001", category: "Electronics", quantity: 25, status: "valid" }
-  ];
 
   const handleDrag = (e) => {
     e?.preventDefault();
@@ -35,8 +29,33 @@ const ImportSection = ({ onImportStart, isImporting }) => {
     }
   };
 
-  const handleFileSelect = (file) => {
+  const handleFileSelect = async (file) => {
     if (file && file?.type === 'text/csv') {
+      const text = await file.text();
+      const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+      const headers = (lines[0] || '').split(',').map((h) => h.trim().toLowerCase());
+      const get = (values, key) => values[headers.indexOf(key)] || '';
+      const rows = lines.slice(1, 8).map((line, idx) => {
+        const values = line.split(',').map((v) => v.trim());
+        const name = get(values, 'name');
+        const sku = get(values, 'sku');
+        const quantity = Number(get(values, 'quantity'));
+        const errors = [];
+        if (!name) errors.push('Name is required');
+        if (!sku) errors.push('SKU is required');
+        if (Number.isNaN(quantity) || quantity < 0) errors.push('Quantity must be a non-negative number');
+        return {
+          row: idx + 1,
+          name,
+          sku,
+          category: get(values, 'category'),
+          quantity: Number.isNaN(quantity) ? '' : quantity,
+          status: errors.length > 0 ? 'error' : 'valid',
+          errors
+        };
+      });
+
+      setPreviewRows(rows);
       setSelectedFile(file);
       setShowPreview(true);
     }
@@ -52,6 +71,7 @@ const ImportSection = ({ onImportStart, isImporting }) => {
     if (selectedFile) {
       onImportStart(selectedFile);
       setSelectedFile(null);
+      setPreviewRows([]);
       setShowPreview(false);
     }
   };
@@ -133,7 +153,7 @@ const ImportSection = ({ onImportStart, isImporting }) => {
               <div>
                 <p className="font-medium text-text-primary">{selectedFile?.name}</p>
                 <p className="text-sm text-text-muted">
-                  {(selectedFile?.size / 1024)?.toFixed(1)} KB • 4 rows detected
+                  {(selectedFile?.size / 1024)?.toFixed(1)} KB • {previewRows?.length} rows detected
                 </p>
               </div>
             </div>
@@ -142,6 +162,7 @@ const ImportSection = ({ onImportStart, isImporting }) => {
               size="icon"
               onClick={() => {
                 setSelectedFile(null);
+                setPreviewRows([]);
                 setShowPreview(false);
               }}
             >
@@ -164,7 +185,7 @@ const ImportSection = ({ onImportStart, isImporting }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockPreviewData?.map((row, index) => (
+                  {previewRows?.map((row, index) => (
                     <tr key={index} className="border-t border-border">
                       <td className="px-4 py-3 text-sm text-text-secondary">{row?.row}</td>
                       <td className="px-4 py-3 text-sm text-text-primary">{row?.name}</td>

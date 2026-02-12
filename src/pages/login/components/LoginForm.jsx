@@ -40,34 +40,6 @@ const LoginForm = ({
     }
   }, [selectedCredentials]);
 
-  // Demo credentials for easy testing
-  const demoCredentials = [
-    {
-      email: "superadmin@stockflow.fr",
-      password: "SuperAdmin123!",
-      role: "Super Admin",
-      description: "Accès complet à toutes les entreprises"
-    },
-    {
-      email: "admin@techcorp.fr",
-      password: "Admin123!",
-      role: "Administrateur",
-      description: "Gestion complète de TechCorp Solutions"
-    },
-    {
-      email: "manager@techcorp.fr",
-      password: "Manager123!",
-      role: "Gestionnaire",
-      description: "Gestion des produits et stocks"
-    },
-    {
-      email: "user@techcorp.fr",
-      password: "User123!",
-      role: "Utilisateur",
-      description: "Consultation et mouvements de stock"
-    }
-  ];
-
   const languageOptions = [
     { value: 'fr', label: 'Français' },
     { value: 'en', label: 'English' }
@@ -192,7 +164,6 @@ const LoginForm = ({
         }
       } else {
         // Sign in flow
-        console.log('[LoginForm] Attempting sign in with:', formData?.email);
         const { data, error } = await signIn(formData?.email, formData?.password);
 
         if (error) {
@@ -213,12 +184,9 @@ const LoginForm = ({
         }
 
         if (data?.user) {
-          console.log('[LoginForm] Sign in successful, user:', data?.user?.email);
-          console.log('[LoginForm] Current company:', currentCompany?.name);
           
           // Auth context has already loaded user data, navigate immediately
           if (currentCompany) {
-            console.log('[LoginForm] Navigating to dashboard');
             onLoginSuccess?.();
             navigate('/dashboard');
           } else {
@@ -262,7 +230,6 @@ const LoginForm = ({
 
   const handleMagicLink = async () => {
     // Placeholder for magic link functionality
-    console.log('Magic link requested for:', formData?.email);
   };
 
   return (
@@ -384,13 +351,12 @@ const LoginForm = ({
           )}
           
           {!isSignUpMode && (
-            <button
-              type="button"
+            <Link
+              to="/forgot-password"
               className="text-sm text-primary hover:text-primary/80 transition-colors"
-              disabled={isLoading}
             >
               {t?.forgotPassword}
-            </button>
+            </Link>
           )}
         </div>
 
@@ -424,18 +390,6 @@ const LoginForm = ({
           </p>
         </div>
 
-        {/* Forgot Password Link */}
-        {!isSignUpMode && (
-          <div className="mt-4 text-center">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-primary hover:text-primary-dark transition-colors inline-flex items-center"
-            >
-              <Icon name="help-circle" className="w-4 h-4 mr-1" />
-              {t?.forgotPassword}
-            </Link>
-          </div>
-        )}
       </form>
       {/* Magic Link Section */}
       {/* <div className="mt-8 pt-6 border-t border-border">

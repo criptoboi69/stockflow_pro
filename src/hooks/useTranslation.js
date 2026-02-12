@@ -242,27 +242,34 @@ const translations = {
   }
 };
 
+
+const parseSettings = () => {
+  const savedSettings = localStorage.getItem('generalSettings');
+  if (!savedSettings) return null;
+
+  try {
+    return JSON.parse(savedSettings);
+  } catch (error) {
+    console.warn('[useTranslation] Invalid generalSettings in localStorage:', error);
+    return null;
+  }
+};
+
 const useTranslation = () => {
   const [currentLanguage, setCurrentLanguage] = useState(() => {
-    // Load from localStorage or default to French
-    const savedSettings = localStorage.getItem('generalSettings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      return settings?.defaultLanguage || 'fr';
-    }
-    return 'fr';
+    const settings = parseSettings();
+    return settings?.defaultLanguage || 'fr';
   });
 
   useEffect(() => {
     // Listen for settings changes
     const handleStorageChange = () => {
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        const newLanguage = settings?.defaultLanguage || 'fr';
-        if (newLanguage !== currentLanguage) {
-          setCurrentLanguage(newLanguage);
-        }
+      const settings = parseSettings();
+      if (!settings) return;
+
+      const newLanguage = settings?.defaultLanguage || 'fr';
+      if (newLanguage !== currentLanguage) {
+        setCurrentLanguage(newLanguage);
       }
     };
 

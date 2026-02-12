@@ -35,8 +35,8 @@ const MovementTimeline = ({
   };
 
   const canEdit = (movement) => {
-    // Allow editing for super_admin and company_admin regardless of movement type
-    return ['super_admin', 'company_admin']?.includes(userRole);
+    // Allow editing for super_admin and administrator regardless of movement type
+    return ['super_admin', 'administrator']?.includes(userRole);
   };
 
   if (isLoading) {

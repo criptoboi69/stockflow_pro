@@ -2,183 +2,142 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-import Image from '../../../components/AppImage';
 
-const ScanResults = ({
-  result,
-  onClose,
-  onScanAgain,
-  currentLanguage = 'fr'
-}) => {
+const ScanResults = ({ result, onClose, onScanAgain, currentLanguage = 'fr' }) => {
   const navigate = useNavigate();
 
   const translations = {
     fr: {
-      scanSuccess: "Scan réussi !",
-      productFound: "Produit trouvé",
-      productNotFound: "Produit non trouvé",
-      viewDetails: "Voir les détails",
-      scanAgain: "Scanner à nouveau",
-      close: "Fermer",
-      stockLevel: "Niveau de stock",
-      category: "Catégorie",
-      location: "Emplacement",
-      lastUpdated: "Dernière mise à jour",
-      inStock: "En stock",
-      lowStock: "Stock faible",
-      outOfStock: "Rupture de stock"
+      scanSuccess: 'Scan réussi !',
+      productFound: 'Produit trouvé dans votre inventaire',
+      productNotFound: 'Aucun produit trouvé',
+      viewDetails: 'Voir détails',
+      scanAgain: 'Scanner à nouveau',
+      close: 'Fermer',
+      stockStatus: 'État du stock',
+      quantity: 'Quantité',
+      category: 'Catégorie',
+      location: 'Emplacement',
+      lastUpdated: 'Dernière mise à jour',
+      unknown: 'Inconnu'
     },
     en: {
-      scanSuccess: "Scan Successful!",
-      productFound: "Product Found",
-      productNotFound: "Product Not Found",
-      viewDetails: "View Details",
-      scanAgain: "Scan Again",
-      close: "Close",
-      stockLevel: "Stock Level",
-      category: "Category",
-      location: "Location",
-      lastUpdated: "Last Updated",
-      inStock: "In Stock",
-      lowStock: "Low Stock",
-      outOfStock: "Out of Stock"
+      scanSuccess: 'Scan Successful!',
+      productFound: 'Product found in your inventory',
+      productNotFound: 'No product found',
+      viewDetails: 'View Details',
+      scanAgain: 'Scan Again',
+      close: 'Close',
+      stockStatus: 'Stock Status',
+      quantity: 'Quantity',
+      category: 'Category',
+      location: 'Location',
+      lastUpdated: 'Last Updated',
+      unknown: 'Unknown'
     }
   };
 
   const t = translations?.[currentLanguage];
+  const product = result?.product;
 
-  // Mock product data based on scan result
-  const mockProduct = {
-    id: result?.code || 'PRD-2024-001',
-    name: result?.code === 'PRD-2024-001' ? 'Ordinateur Portable Dell XPS 13' :
-    result?.code === 'PRD-2024-002' ? 'Souris Sans Fil Logitech MX Master 3' : 'Produit Scanné',
-    sku: result?.code || 'PRD-2024-001',
-    image: "https://images.unsplash.com/photo-1487017159836-4e23ece2e4cf",
-    imageAlt: 'Modern silver laptop computer open on white desk with clean minimalist design',
-    category: 'Informatique',
-    location: 'Entrepôt A - Étagère 3',
-    stockQuantity: 15,
-    stockStatus: 'in_stock',
-    lastUpdated: new Date()?.toLocaleDateString('fr-FR'),
-    found: true
-  };
-
-  const getStockStatusInfo = (status, quantity) => {
-    switch (status) {
-      case 'in_stock':
-        return {
-          label: t?.inStock,
-          color: 'text-success',
-          bgColor: 'bg-success/10',
-          icon: 'CheckCircle'
-        };
-      case 'low_stock':
-        return {
-          label: t?.lowStock,
-          color: 'text-warning',
-          bgColor: 'bg-warning/10',
-          icon: 'AlertTriangle'
-        };
-      case 'out_of_stock':
-        return {
-          label: t?.outOfStock,
-          color: 'text-error',
-          bgColor: 'bg-error/10',
-          icon: 'XCircle'
-        };
-      default:
-        return {
-          label: t?.inStock,
-          color: 'text-success',
-          bgColor: 'bg-success/10',
-          icon: 'CheckCircle'
-        };
+  const getStockStatusInfo = (quantity = 0) => {
+    if (quantity <= 0) {
+      return { label: 'Rupture', color: 'text-error', bgColor: 'bg-error/10', icon: 'XCircle' };
     }
+    if (quantity <= 10) {
+      return { label: 'Stock faible', color: 'text-warning', bgColor: 'bg-warning/10', icon: 'AlertTriangle' };
+    }
+    return { label: 'En stock', color: 'text-success', bgColor: 'bg-success/10', icon: 'CheckCircle' };
   };
 
   const handleViewDetails = () => {
-    navigate(`/products/${mockProduct?.id}`);
+    if (!product?.sku) {
+      onClose?.();
+      return;
+    }
+    navigate(`/products?search=${encodeURIComponent(product.sku)}`);
   };
 
   if (!result) return null;
 
-  const stockInfo = getStockStatusInfo(mockProduct?.stockStatus, mockProduct?.stockQuantity);
+  const stockInfo = getStockStatusInfo(product?.quantity || 0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-200 p-4">
       <div className="bg-surface rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-shadow">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
-              <Icon name="CheckCircle" size={20} className="text-success" />
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${product ? 'bg-success/10' : 'bg-warning/10'}`}>
+                <Icon name={product ? 'CheckCircle' : 'AlertCircle'} size={24} className={product ? 'text-success' : 'text-warning'} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-text-primary">{product ? t?.scanSuccess : t?.productNotFound}</h3>
+                <p className="text-sm text-text-muted">{product ? t?.productFound : `${result?.code || ''}`}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-text-primary">{t?.scanSuccess}</h3>
-              <p className="text-sm text-text-muted">{t?.productFound}</p>
-            </div>
+            <Button variant="ghost" size="sm" onClick={onClose} className="text-text-muted hover:text-text-primary">
+              <Icon name="X" size={20} />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <Icon name="X" size={20} />
-          </Button>
         </div>
 
-        {/* Product Information */}
-        <div className="p-6 space-y-6">
-          {/* Product Image and Basic Info */}
-          <div className="flex items-start space-x-4">
-            <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-              <Image
-                src={mockProduct?.image}
-                alt={mockProduct?.imageAlt}
-                className="w-full h-full object-cover" />
-
+        {product && (
+          <div className="p-6 space-y-4">
+            <div className="flex items-start space-x-4">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                {product?.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Icon name="Package" size={24} className="text-text-muted" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-text-primary mb-1">{product?.name || t?.unknown}</h4>
+                <p className="text-sm text-text-muted mb-2">SKU: {product?.sku || result?.code}</p>
+                <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full ${stockInfo?.bgColor}`}>
+                  <Icon name={stockInfo?.icon} size={12} className={stockInfo?.color} />
+                  <span className={`text-xs font-medium ${stockInfo?.color}`}>{stockInfo?.label}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-text-primary mb-1">{mockProduct?.name}</h4>
-              <p className="text-sm text-text-muted mb-2">SKU: {mockProduct?.sku}</p>
-              <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${stockInfo?.bgColor} ${stockInfo?.color}`}>
-                <Icon name={stockInfo?.icon} size={12} className="mr-1" />
-                {stockInfo?.label}
+
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+              <div>
+                <p className="text-xs text-text-muted mb-1">{t?.quantity}</p>
+                <p className="font-medium text-text-primary">{product?.quantity ?? 0} unités</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted mb-1">{t?.category}</p>
+                <p className="font-medium text-text-primary">{product?.category || t?.unknown}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted mb-1">{t?.location}</p>
+                <p className="font-medium text-text-primary">{product?.location || t?.unknown}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted mb-1">{t?.lastUpdated}</p>
+                <p className="font-medium text-text-primary">{new Date(product?.updatedAt || result?.timestamp).toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Product Details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-text-muted mb-1">{t?.stockLevel}</p>
-              <p className="font-medium text-text-primary">{mockProduct?.stockQuantity} unités</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-muted mb-1">{t?.category}</p>
-              <p className="font-medium text-text-primary">{mockProduct?.category}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-xs text-text-muted mb-1">{t?.location}</p>
-              <p className="font-medium text-text-primary">{mockProduct?.location}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-xs text-text-muted mb-1">{t?.lastUpdated}</p>
-              <p className="font-medium text-text-primary">{mockProduct?.lastUpdated}</p>
-            </div>
+        <div className="p-6 border-t border-border bg-muted/30">
+          <div className="flex space-x-3">
+            <Button variant="outline" onClick={onScanAgain} className="flex-1" iconName="RotateCcw" iconPosition="left">
+              {t?.scanAgain}
+            </Button>
+            {product && (
+              <Button variant="default" onClick={handleViewDetails} className="flex-1" iconName="ExternalLink" iconPosition="left">
+                {t?.viewDetails}
+              </Button>
+            )}
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex space-x-3 p-6 border-t border-border">
-          <Button onClick={handleViewDetails} className="flex-1">
-            <Icon name="Eye" size={16} className="mr-2" />
-            {t?.viewDetails}
-          </Button>
-          <Button onClick={onScanAgain} variant="outline" className="flex-1">
-            <Icon name="QrCode" size={16} className="mr-2" />
-            {t?.scanAgain}
-          </Button>
-        </div>
       </div>
-    </div>);
-
+    </div>
+  );
 };
 
 export default ScanResults;

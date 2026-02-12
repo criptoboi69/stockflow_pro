@@ -101,7 +101,6 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       
       const updatedUser = {
         ...user,
@@ -126,7 +125,6 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
   const handleResendInvitation = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       // Show success message
     } catch (error) {
       setErrors({ submit: 'Erreur lors de l\'envoi de l\'invitation' });

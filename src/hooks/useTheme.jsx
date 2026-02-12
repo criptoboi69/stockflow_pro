@@ -21,18 +21,11 @@ export const useThemeProvider = () => {
     mediaQuery?.addEventListener('change', handleChange);
 
     // Load saved theme from localStorage or user preferences
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
-      try {
-        const preferences = JSON.parse(savedPreferences);
-        const savedTheme = preferences?.interface?.theme || 'light';
-        setTheme(savedTheme);
-        applyTheme(savedTheme, mediaQuery?.matches ? 'dark' : 'light');
-      } catch (error) {
-        console.error('Error loading theme preference:', error);
-        setTheme('light');
-        applyTheme('light', 'light');
-      }
+    const preferences = getLocalStorageJson('userPreferences', null);
+    if (preferences) {
+      const savedTheme = preferences?.interface?.theme || 'light';
+      setTheme(savedTheme);
+      applyTheme(savedTheme, mediaQuery?.matches ? 'dark' : 'light');
     } else {
       // Default to light theme if no preferences saved
       setTheme('light');
@@ -70,8 +63,7 @@ export const useThemeProvider = () => {
     
     // Update localStorage with new theme preference
     try {
-      const savedPreferences = localStorage.getItem('userPreferences');
-      const preferences = savedPreferences ? JSON.parse(savedPreferences) : {};
+      const preferences = getLocalStorageJson('userPreferences', {});
       
       const updatedPreferences = {
         ...preferences,

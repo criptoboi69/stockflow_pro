@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
+import productService from '../../../services/productService';
 
 
-const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
+const NewMovementModal = ({ isOpen, onClose, onSave, userRole, companyId }) => {
   const [currentStep, setCurrentStep] = useState('search'); // 'search' | 'details'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -15,56 +16,9 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Mock products for search
-  const mockProducts = [
-    {
-      id: 'prod-001',
-      name: 'Ordinateur portable Dell XPS 13',
-      sku: 'DELL-XPS13-001',
-      image: "https://images.unsplash.com/photo-1494498902093-87f291949d17",
-      imageAlt: 'Silver Dell XPS 13 laptop open on white desk showing screen',
-      currentStock: 125,
-      location: 'Entrepôt A'
-    },
-    {
-      id: 'prod-002',
-      name: 'Souris sans fil Logitech MX Master 3',
-      sku: 'LOG-MX3-002',
-      image: "https://images.unsplash.com/photo-1618499893452-942141785a2a",
-      imageAlt: 'Black Logitech wireless mouse on white surface with ergonomic design',
-      currentStock: 35,
-      location: 'Magasin'
-    },
-    {
-      id: 'prod-003',
-      name: 'Écran Samsung 27" 4K',
-      sku: 'SAM-27-4K-003',
-      image: "https://images.unsplash.com/photo-1721023554007-e45b90b68edf",
-      imageAlt: 'Large Samsung 4K monitor displaying colorful desktop on modern office desk',
-      currentStock: 47,
-      location: 'Entrepôt B'
-    },
-    {
-      id: 'prod-004',
-      name: 'Clavier mécanique Corsair K95',
-      sku: 'COR-K95-004',
-      image: "https://images.unsplash.com/photo-1679533662330-457ca8447e7d",
-      imageAlt: 'Black mechanical gaming keyboard with RGB backlighting on dark surface',
-      currentStock: 60,
-      location: 'Entrepôt A'
-    },
-    {
-      id: 'prod-005',
-      name: 'Webcam Logitech C920 HD',
-      sku: 'LOG-C920-005',
-      image: "https://images.unsplash.com/photo-1698697406794-63dfa42a3cca",
-      imageAlt: 'Black Logitech HD webcam mounted on computer monitor in office setting',
-      currentStock: 140,
-      location: 'Entrepôt B'
-    }
-  ];
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
-  // Mock locations for selection
   const locations = [
     { id: 'warehouse-a', name: 'Entrepôt A' },
     { id: 'warehouse-b', name: 'Entrepôt B' },
@@ -72,11 +26,42 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
     { id: 'returns', name: 'Retours' }
   ];
 
-  // Filter products based on search
-  const filteredProducts = mockProducts?.filter((product) =>
-    product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-    product?.sku?.toLowerCase()?.includes(searchTerm?.toLowerCase())
+  const filteredProducts = useMemo(
+    () =>
+      availableProducts?.filter((product) =>
+        product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+        product?.sku?.toLowerCase()?.includes(searchTerm?.toLowerCase())
+      ),
+    [availableProducts, searchTerm]
   );
+
+  const loadProducts = async () => {
+    if (!companyId) {
+      setAvailableProducts([]);
+      return;
+    }
+
+    setIsLoadingProducts(true);
+    try {
+      const products = await productService.getProducts(companyId);
+      setAvailableProducts(
+        products.map((product) => ({
+          id: product?.id,
+          name: product?.name,
+          sku: product?.sku,
+          image: product?.imageUrl,
+          imageAlt: product?.name,
+          currentStock: Number(product?.quantity || 0),
+          location: product?.location || 'Non défini'
+        }))
+      );
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, submit: 'Impossible de charger les produits.' }));
+      setAvailableProducts([]);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +74,7 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
         reason: ''
       });
       setErrors({});
+      loadProducts();
     }
   }, [isOpen]);
 
@@ -150,13 +136,11 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
     
     try {
       const movementData = {
-        product: selectedProduct,
+        productId: selectedProduct?.id,
         type: formData?.quantity > 0 ? 'receipt' : 'issue',
-        quantity: formData?.quantity,
-        location: { id: selectedProduct?.location, name: selectedProduct?.location },
-        reason: formData?.reason || 'Aucun motif spécifié',
-        createdBy: 'current_user',
-        createdAt: new Date()?.toISOString()
+        quantity: Math.abs(formData?.quantity),
+        location: selectedProduct?.location || 'Non défini',
+        reason: formData?.reason || 'Aucun motif spécifié'
       };
 
       await onSave(movementData);
@@ -195,7 +179,7 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
   if (!isOpen) return null;
 
   // Check permissions
-  const canCreate = ['super_admin', 'company_admin']?.includes(userRole);
+  const canCreate = ['super_admin', 'administrator']?.includes(userRole);
   if (!canCreate) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -276,7 +260,9 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole }) => {
 
               {/* Products List */}
               <div className="space-y-3">
-                {filteredProducts?.length === 0 ? (
+                {isLoadingProducts ? (
+                  <div className="text-center py-8 text-text-muted">Chargement des produits...</div>
+                ) : filteredProducts?.length === 0 ? (
                   <div className="text-center py-12">
                     <Icon name="Package" size={48} className="mx-auto text-text-muted mb-4" />
                     <h3 className="text-lg font-medium text-text-primary mb-2">

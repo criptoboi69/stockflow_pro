@@ -24,13 +24,11 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     const { data: authListener } = supabase?.auth?.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth state changed:', event, session?.user?.email);
       if (event === 'SIGNED_IN' && session?.user) {
         await loadUserData(session?.user);
       } else if (event === 'SIGNED_OUT') {
         clearAuthData();
       } else if (event === 'USER_UPDATED') {
-        console.log('[AuthContext] User updated:', session?.user);
       }
     });
 
@@ -41,7 +39,6 @@ export const AuthProvider = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
-      console.log('[AuthContext] Initializing auth...');
       const { data: { session }, error } = await supabase?.auth?.getSession();
       
       if (error) {
@@ -49,10 +46,8 @@ export const AuthProvider = ({ children }) => {
       }
       
       if (session?.user) {
-        console.log('[AuthContext] Found existing session for:', session?.user?.email);
         await loadUserData(session?.user);
       } else {
-        console.log('[AuthContext] No existing session found');
       }
     } catch (error) {
       console.error('[AuthContext] Auth initialization error:', error);
@@ -64,7 +59,6 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserData = async (authUser) => {
     try {
-      console.log('[AuthContext] Loading user data for:', authUser?.email);
       setUser(authUser);
 
       // Check if user profile exists
@@ -79,7 +73,6 @@ export const AuthProvider = ({ children }) => {
         
         // If profile doesn't exist, create it
         if (profileError?.code === 'PGRST116') {
-          console.log('[AuthContext] Profile not found, creating...');
           const { data: newProfile, error: createError } = await supabase
             ?.from('user_profiles')
             ?.insert({
@@ -96,13 +89,11 @@ export const AuthProvider = ({ children }) => {
             throw createError;
           }
           
-          console.log('[AuthContext] Profile created successfully');
           setProfile(newProfile);
         } else {
           throw profileError;
         }
       } else {
-        console.log('[AuthContext] Profile loaded:', profileData?.email);
         setProfile(profileData);
       }
 
@@ -115,7 +106,6 @@ export const AuthProvider = ({ children }) => {
         // Don't throw - user might not have companies yet
         setCompanies([]);
       } else {
-        console.log('[AuthContext] Companies loaded:', companiesData?.length || 0);
         setCompanies(companiesData || []);
       }
 
@@ -141,7 +131,6 @@ export const AuthProvider = ({ children }) => {
 
         // Set the company and role
         if (companyToSet) {
-          console.log('[AuthContext] Setting company:', companyToSet?.company_name, 'Role:', companyToSet?.role);
           setCurrentCompany({
             id: companyToSet?.company_id,
             name: companyToSet?.company_name
@@ -176,7 +165,6 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (email, password) => {
     try {
       setLoading(true);
-      console.log('[AuthContext] Starting sign in for:', email);
       
       const { data, error } = await supabase?.auth?.signInWithPassword({
         email,
@@ -189,12 +177,10 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
       
-      console.log('[AuthContext] Sign in successful, loading user data...');
       
       // Wait for user data to load before returning
       if (data?.user) {
         await loadUserData(data?.user);
-        console.log('[AuthContext] User data loaded successfully');
       }
       
       return { data, error: null };

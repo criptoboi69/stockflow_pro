@@ -5,7 +5,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 
-const ExportSection = ({ onExportStart, isExporting }) => {
+const ExportSection = ({ onExportStart, isExporting, lastExportAt = null }) => {
   const [exportConfig, setExportConfig] = useState({
     format: 'csv',
     dateRange: 'all',
@@ -54,7 +54,7 @@ const ExportSection = ({ onExportStart, isExporting }) => {
         </div>
         <div className="flex items-center space-x-2 text-sm text-text-muted">
           <Icon name="Clock" size={16} />
-          <span>Last export: 2 hours ago</span>
+          <span>{lastExportAt ? `Dernier export: ${new Date(lastExportAt).toLocaleString('fr-FR')}` : 'Aucun export récent'}</span>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

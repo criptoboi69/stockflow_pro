@@ -1,174 +1,154 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import CategoryQuickAdd from './components/CategoryQuickAdd';
 import CategoryList from './components/CategoryList';
 import CategoryStats from './components/CategoryStats';
+import { useAuth } from '../../contexts/AuthContext';
+import productService from '../../services/productService';
 
 const CategoriesPage = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Add these declarations
-  const currentRole = 'company_admin'; // or retrieve from context/props
-  const currentCompany = { name: 'StockFlow Pro' }; // or retrieve from context/props
+  const { currentRole, currentCompany } = useAuth();
 
-  // Mock data for categories
-  const mockCategories = [
-    {
-      id: 1,
-      name: "Électronique",
-      description: "Appareils électroniques et accessoires technologiques",
-      productCount: 45,
-      createdAt: "2024-01-15T10:30:00Z",
-      updatedAt: "2024-10-20T14:22:00Z",
-      parentCategory: null
-    },
-    {
-      id: 2,
-      name: "Smartphones",
-      description: "Téléphones intelligents et accessoires mobiles",
-      productCount: 23,
-      createdAt: "2024-01-20T09:15:00Z",
-      updatedAt: "2024-10-18T11:45:00Z",
-      parentCategory: "Électronique"
-    },
-    {
-      id: 3,
-      name: "Vêtements",
-      description: "Articles vestimentaires pour hommes, femmes et enfants",
-      productCount: 78,
-      createdAt: "2024-02-01T16:20:00Z",
-      updatedAt: "2024-10-22T09:30:00Z",
-      parentCategory: null
-    },
-    {
-      id: 4,
-      name: "Chaussures",
-      description: "Chaussures de sport, ville et accessoires",
-      productCount: 34,
-      createdAt: "2024-02-10T11:45:00Z",
-      updatedAt: "2024-10-19T15:10:00Z",
-      parentCategory: "Vêtements"
-    },
-    {
-      id: 5,
-      name: "Maison & Jardin",
-      description: "Articles pour la maison, décoration et jardinage",
-      productCount: 56,
-      createdAt: "2024-02-15T14:30:00Z",
-      updatedAt: "2024-10-21T12:15:00Z",
-      parentCategory: null
-    },
-    {
-      id: 6,
-      name: "Mobilier",
-      description: "Meubles et accessoires d\'ameublement",
-      productCount: 12,
-      createdAt: "2024-03-01T08:00:00Z",
-      updatedAt: "2024-10-23T16:45:00Z",
-      parentCategory: "Maison & Jardin"
-    },
-    {
-      id: 7,
-      name: "Livres",
-      description: "Livres, magazines et publications",
-      productCount: 0,
-      createdAt: "2024-03-10T13:20:00Z",
-      updatedAt: "2024-03-10T13:20:00Z",
-      parentCategory: null
-    },
-    {
-      id: 8,
-      name: "Sports & Loisirs",
-      description: "Équipements sportifs et articles de loisirs",
-      productCount: 29,
-      createdAt: "2024-03-15T10:10:00Z",
-      updatedAt: "2024-10-20T08:30:00Z",
-      parentCategory: null
-    },
-    {
-      id: 9,
-      name: "Beauté & Santé",
-      description: "Produits cosmétiques et de soins personnels",
-      productCount: 41,
-      createdAt: "2024-04-01T12:00:00Z",
-      updatedAt: "2024-10-24T14:20:00Z",
-      parentCategory: null
-    },
-    {
-      id: 10,
-      name: "Alimentation",
-      description: "Produits alimentaires et boissons",
-      productCount: 0,
-      createdAt: "2024-04-15T15:30:00Z",
-      updatedAt: "2024-04-15T15:30:00Z",
-      parentCategory: null
-    }
-  ];
+  const canManageCategories = ['super_admin', 'administrator', 'manager'].includes(currentRole);
 
-  useEffect(() => {
-    // Simulate API call
-    const loadCategories = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setCategories(mockCategories);
-      } catch (error) {
-        console.error('Error loading categories:', error);
-      } finally {
-        setIsLoading(false);
+  const buildCategoriesFromProducts = (productList) => {
+    const grouped = new Map();
+
+    productList.forEach((product) => {
+      const categoryName = (product?.category || 'Non classé').trim();
+      if (!grouped.has(categoryName)) {
+        grouped.set(categoryName, {
+          id: categoryName,
+          name: categoryName,
+          description: null,
+          productCount: 0,
+          createdAt: product?.createdAt || new Date().toISOString(),
+          updatedAt: product?.updatedAt || new Date().toISOString(),
+          parentCategory: null
+        });
       }
-    };
 
-    loadCategories();
-  }, []);
+      const current = grouped.get(categoryName);
+      current.productCount += 1;
+      current.updatedAt = product?.updatedAt || current.updatedAt;
+    });
 
-  const handleAddCategory = async (categoryData) => {
+    return Array.from(grouped.values()).sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const loadCategories = async () => {
+    if (!currentCompany?.id) {
+      setCategories([]);
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const newCategory = {
-        id: Math.max(...categories?.map(c => c?.id)) + 1,
-        ...categoryData,
-        productCount: 0,
-        createdAt: new Date()?.toISOString(),
-        updatedAt: new Date()?.toISOString(),
-        parentCategory: null
-      };
-
-      setCategories(prev => [newCategory, ...prev]);
+      const productList = await productService.getProducts(currentCompany.id);
+      setProducts(productList);
+      setCategories(buildCategoriesFromProducts(productList));
     } catch (error) {
-      console.error('Error adding category:', error);
+      console.error('Error loading categories from products:', error);
+      setCategories([]);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadCategories();
+  }, [currentCompany?.id]);
+
+  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
+
+  const handleAddCategory = async (categoryData) => {
+    const categoryName = categoryData?.name?.trim();
+    if (!categoryName || categoryNames.includes(categoryName)) {
+      return;
+    }
+
+    setCategories((prev) => [
+      {
+        id: categoryName,
+        name: categoryName,
+        description: categoryData?.description || null,
+        productCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        parentCategory: null
+      },
+      ...prev
+    ]);
+  };
+
   const handleEditCategory = async (updatedCategory) => {
+    const previous = categories.find((cat) => cat.id === updatedCategory?.id);
+    if (!previous || previous.name === updatedCategory?.name) {
+      setCategories((prev) =>
+        prev.map((cat) => (cat.id === updatedCategory?.id ? { ...cat, ...updatedCategory } : cat))
+      );
+      return;
+    }
+
+    const impactedProducts = products.filter((p) => (p?.category || 'Non classé') === previous.name);
+
     try {
-      setCategories(prev => 
-        prev?.map(cat => 
-          cat?.id === updatedCategory?.id ? updatedCategory : cat
+      await Promise.all(
+        impactedProducts.map((product) =>
+          productService.updateProduct(product.id, {
+            category: updatedCategory?.name
+          })
         )
       );
+      await loadCategories();
     } catch (error) {
-      console.error('Error updating category:', error);
+      console.error('Error renaming category:', error);
     }
   };
 
   const handleDeleteCategory = async (categoryId) => {
+    const categoryToDelete = categories.find((cat) => cat.id === categoryId);
+    if (!categoryToDelete) return;
+
+    const impactedProducts = products.filter((p) => (p?.category || 'Non classé') === categoryToDelete.name);
+
     try {
-      setCategories(prev => prev?.filter(cat => cat?.id !== categoryId));
+      await Promise.all(
+        impactedProducts.map((product) =>
+          productService.updateProduct(product.id, {
+            category: 'Non classé'
+          })
+        )
+      );
+      await loadCategories();
     } catch (error) {
       console.error('Error deleting category:', error);
     }
   };
 
   const handleBulkDelete = async (categoryIds) => {
+    const categoriesToDelete = categories.filter((cat) => categoryIds.includes(cat.id));
+    const namesToDelete = new Set(categoriesToDelete.map((cat) => cat.name));
+    const impactedProducts = products.filter((p) => namesToDelete.has(p?.category || 'Non classé'));
+
     try {
-      setCategories(prev => 
-        prev?.filter(cat => !categoryIds?.includes(cat?.id))
+      await Promise.all(
+        impactedProducts.map((product) =>
+          productService.updateProduct(product.id, {
+            category: 'Non classé'
+          })
+        )
       );
+      await loadCategories();
     } catch (error) {
       console.error('Error bulk deleting categories:', error);
     }
@@ -186,33 +166,22 @@ const CategoriesPage = () => {
           isCollapsed={isCollapsed}
           onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
           userRole={currentRole || 'user'}
-          currentTenant={currentCompany?.name || 'StockFlow Pro'}
+          currentTenant={currentCompany || { name: 'StockFlow Pro' }}
         />
 
-        <main className={`
-          transition-all duration-200 ease-out pt-16 lg:pt-0
-          ${isCollapsed ? 'lg:ml-16' : 'lg:ml-72'}
-        `}>
+        <main className={`transition-all duration-200 ease-out pt-16 lg:pt-0 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
           <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-            {/* Page Header */}
             <div className="mb-8">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div>
-                  <h1 className="text-3xl font-bold text-text-primary">Catégories</h1>
-                  <p className="text-text-muted mt-2">
-                    Organisez vos produits en catégories pour une gestion optimale de votre inventaire
-                  </p>
-                </div>
-              </div>
+              <h1 className="text-3xl font-bold text-text-primary mb-2">Gestion des catégories</h1>
+              <p className="text-text-muted">
+                Les catégories sont maintenant calculées depuis vos produits réels dans la base.
+              </p>
             </div>
 
-            {/* Statistics */}
             <CategoryStats categories={categories} />
 
-            {/* Quick Add Form */}
-            <CategoryQuickAdd onAdd={handleAddCategory} />
+            {canManageCategories && <CategoryQuickAdd onAdd={handleAddCategory} isLoading={isLoading} />}
 
-            {/* Categories List */}
             <CategoryList
               categories={categories}
               onEdit={handleEditCategory}
@@ -223,11 +192,7 @@ const CategoriesPage = () => {
           </div>
         </main>
 
-        {/* Quick Action Bar */}
-        <QuickActionBar
-          variant="floating"
-          userRole="company_admin"
-        />
+        <QuickActionBar variant="floating" userRole={currentRole} />
       </div>
     </>
   );

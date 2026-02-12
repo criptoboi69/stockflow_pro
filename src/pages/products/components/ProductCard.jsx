@@ -3,6 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import { useAuth } from '../../../hooks/useAuth';
+import { getLocalStorageJson } from '../../../utils/storage';
 
 const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement }) => {
   const { isAdministrator, isManager } = useAuth();
@@ -14,13 +15,8 @@ const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement })
     
     if (canSeePrices) {
       // Load price display setting from localStorage for admins/managers
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false); // Default to true if not set
-      } else {
-        setShowPrices(true);
-      }
+      const settings = getLocalStorageJson('generalSettings', {});
+      setShowPrices(settings?.showPrices !== false);
     } else {
       // Regular users never see prices
       setShowPrices(false);
@@ -33,11 +29,8 @@ const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement })
     if (!canSeePrices) return;
 
     const loadPriceSetting = () => {
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false);
-      }
+      const settings = getLocalStorageJson('generalSettings', {});
+      setShowPrices(settings?.showPrices !== false);
     };
 
     const handleSettingsChange = () => {

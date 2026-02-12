@@ -5,6 +5,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getLocalStorageJson } from '../../../utils/storage';
 
 const GeneralParametersTab = ({ userRole, onSave }) => {
   const { isAdministrator, isManager } = useAuth();
@@ -64,9 +65,9 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
 
   useEffect(() => {
     // Load settings from localStorage or API
-    const savedSettings = localStorage.getItem('generalSettings');
+    const savedSettings = getLocalStorageJson('generalSettings', null);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings(savedSettings);
     }
   }, []);
 
@@ -108,9 +109,9 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
   };
 
   const handleReset = () => {
-    const savedSettings = localStorage.getItem('generalSettings');
+    const savedSettings = getLocalStorageJson('generalSettings', null);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings(savedSettings);
     }
     setHasChanges(false);
   };

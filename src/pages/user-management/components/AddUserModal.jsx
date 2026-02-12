@@ -85,7 +85,6 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       
       const newUser = {
         id: Date.now(),

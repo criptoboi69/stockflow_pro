@@ -3,27 +3,23 @@ import { Helmet } from 'react-helmet';
 import LoginForm from './components/LoginForm';
 import CredentialsHelper from './components/CredentialsHelper';
 import SecurityBadges from './components/SecurityBadges';
+import { getStoredLanguage, persistLanguage } from '../../utils/language';
 
 const LoginPage = () => {
-  const [currentLanguage, setCurrentLanguage] = useState('fr');
+  const [currentLanguage, setCurrentLanguage] = useState(getStoredLanguage());
   const [selectedCredentials, setSelectedCredentials] = useState(null);
 
   useEffect(() => {
-    // Check for saved language preference
-    const savedLanguage = localStorage.getItem('currentLanguage');
-    if (savedLanguage && ['fr', 'en']?.includes(savedLanguage)) {
-      setCurrentLanguage(savedLanguage);
-    }
+    setCurrentLanguage(getStoredLanguage());
   }, []);
 
   const handleLanguageChange = (language) => {
     setCurrentLanguage(language);
-    localStorage.setItem('currentLanguage', language);
+    persistLanguage(language);
   };
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = () => {
     // Additional login success handling can be added here
-    console.log('Login successful for user:', user);
   };
 
   const handleCredentialSelect = (credentials) => {

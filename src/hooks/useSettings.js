@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getLocalStorageJson } from '../utils/storage';
 
 const useSettings = () => {
   const [settings, setSettings] = useState({
@@ -19,9 +20,9 @@ const useSettings = () => {
 
   useEffect(() => {
     // Load settings from localStorage
-    const savedSettings = localStorage.getItem('generalSettings');
+    const savedSettings = getLocalStorageJson('generalSettings', null);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings(savedSettings);
     }
   }, []);
 

@@ -41,7 +41,6 @@ export const useRealtimeSubscription = ({
         ...(filter && { filter: `${filter?.column}=eq.${filter?.value}` })
       },
       (payload) => {
-        console.log(`Real-time event on ${table}:`, payload);
 
         switch (payload?.eventType) {
           case 'INSERT':
@@ -67,7 +66,6 @@ export const useRealtimeSubscription = ({
 
     // Subscribe to changes
     subscription?.subscribe((status) => {
-      console.log(`Subscription status for ${table}:`, status);
     });
 
     channelRef.current = channel;
@@ -75,7 +73,6 @@ export const useRealtimeSubscription = ({
     // Cleanup subscription on unmount
     return () => {
       if (channelRef?.current) {
-        console.log(`Unsubscribing from ${table}`);
         supabase?.removeChannel(channelRef?.current);
         channelRef.current = null;
       }

@@ -3,6 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import { getLocalStorageJson } from '../../../utils/storage';
 import { Checkbox } from '../../../components/ui/Checkbox';
 
 const NotificationSettingsTab = ({ userRole, onSave }) => {
@@ -46,9 +47,9 @@ const NotificationSettingsTab = ({ userRole, onSave }) => {
 
   useEffect(() => {
     // Load settings from localStorage or API
-    const savedSettings = localStorage.getItem('notificationSettings');
+    const savedSettings = getLocalStorageJson('notificationSettings', null);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings(savedSettings);
     }
   }, []);
 
@@ -110,8 +111,6 @@ const NotificationSettingsTab = ({ userRole, onSave }) => {
   const handleTestWebhook = async () => {
     setTestingWebhook(true);
     try {
-      // Simulate webhook test
-      await new Promise(resolve => setTimeout(resolve, 2000));
       alert('Test webhook envoyé avec succès !');
     } catch (error) {
       alert('Erreur lors du test du webhook');
@@ -134,9 +133,9 @@ const NotificationSettingsTab = ({ userRole, onSave }) => {
   };
 
   const handleReset = () => {
-    const savedSettings = localStorage.getItem('notificationSettings');
+    const savedSettings = getLocalStorageJson('notificationSettings', null);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings(savedSettings);
     }
     setHasChanges(false);
   };
@@ -261,7 +260,7 @@ const NotificationSettingsTab = ({ userRole, onSave }) => {
         </div>
       </div>
       {/* Webhook Integration */}
-      {(userRole === 'super_admin' || userRole === 'company_admin') && (
+      {(userRole === 'super_admin' || userRole === 'administrator') && (
         <div className="bg-card rounded-lg border border-border p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">

@@ -4,6 +4,7 @@ import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { useAuth } from '../../../hooks/useAuth';
+import { getLocalStorageJson } from '../../../utils/storage';
 
 const ProductTable = ({ 
   products, 
@@ -27,13 +28,8 @@ const ProductTable = ({
     
     if (canSeePrices) {
       // Load price display setting from localStorage for admins/managers
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false); // Default to true if not set
-      } else {
-        setShowPrices(true);
-      }
+      const settings = getLocalStorageJson('generalSettings', {});
+      setShowPrices(settings?.showPrices !== false);
     } else {
       // Regular users never see prices
       setShowPrices(false);
@@ -46,11 +42,8 @@ const ProductTable = ({
     if (!canSeePrices) return;
 
     const loadPriceSetting = () => {
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false);
-      }
+      const settings = getLocalStorageJson('generalSettings', {});
+      setShowPrices(settings?.showPrices !== false);
     };
 
     const handleSettingsChange = () => {

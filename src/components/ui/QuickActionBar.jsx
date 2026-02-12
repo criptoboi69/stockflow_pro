@@ -5,7 +5,7 @@ import Button from './Button';
 
 const QuickActionBar = ({ 
   variant = 'floating', // 'floating' | 'header' | 'dashboard'
-  userRole = 'team_member',
+  userRole = 'user',
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -16,7 +16,7 @@ const QuickActionBar = ({
       label: 'Scan QR Code',
       path: '/qr-scanner',
       icon: 'QrCode',
-      roles: ['super_admin', 'company_admin', 'team_member'],
+      roles: ['super_admin', 'administrator', 'manager', 'user'],
       color: 'primary',
       description: 'Quick product scanning'
     },
@@ -24,7 +24,7 @@ const QuickActionBar = ({
       label: 'Add Product',
       path: '/products?action=add',
       icon: 'Plus',
-      roles: ['super_admin', 'company_admin'],
+      roles: ['super_admin', 'administrator', 'manager'],
       color: 'success',
       description: 'Create new product'
     },
@@ -32,7 +32,7 @@ const QuickActionBar = ({
       label: 'Stock Movement',
       path: '/stock-movements?action=add',
       icon: 'ArrowUpDown',
-      roles: ['super_admin', 'company_admin', 'team_member'],
+      roles: ['super_admin', 'administrator', 'manager', 'user'],
       color: 'accent',
       description: 'Record stock change'
     },
@@ -40,7 +40,7 @@ const QuickActionBar = ({
       label: 'Quick Search',
       action: 'search',
       icon: 'Search',
-      roles: ['super_admin', 'company_admin', 'team_member'],
+      roles: ['super_admin', 'administrator', 'manager', 'user'],
       color: 'secondary',
       description: 'Find products quickly'
     }
@@ -54,10 +54,14 @@ const QuickActionBar = ({
     if (action?.path) {
       navigate(action?.path);
     } else if (action?.action === 'search') {
-      // Trigger search modal or focus search input
+      const quickSearchEvent = new CustomEvent('stockflow:quick-search');
+      window.dispatchEvent(quickSearchEvent);
+
       const searchInput = document.querySelector('[data-search-input]');
       if (searchInput) {
         searchInput?.focus();
+      } else {
+        navigate('/products?focusSearch=true');
       }
     }
     setIsExpanded(false);

@@ -15,6 +15,7 @@ const QRCodeGenerator = ({
   onClose, 
   onGenerate 
 }) => {
+  const { isAdministrator, isManager } = useAuth();
   const [qrConfig, setQrConfig] = useState({
     size: 256,
     level: 'M', // Error correction level
@@ -62,19 +63,22 @@ const QRCodeGenerator = ({
 
     let data = '';
     const baseUrl = window.location?.origin;
+    const skuParam = encodeURIComponent(product?.sku || '');
+    const productSearchUrl = `${baseUrl}/products?search=${skuParam}`;
+    const stockSearchUrl = `${baseUrl}/stock-movements?search=${skuParam}`;
     
     switch (dataType) {
       case 'product_management_url':
-        // Main URL for product page with quantity management capability
-        data = `${baseUrl}/products/${product?.id || product?.sku}?action=manage`;
+        // Route existante vers la page produits avec filtre de recherche
+        data = productSearchUrl;
         break;
       case 'product_page_url':
-        // Direct link to product page
-        data = `${baseUrl}/products/${product?.id || product?.sku}`;
+        // Route existante vers la page produits avec filtre de recherche
+        data = productSearchUrl;
         break;
       case 'stock_management_url':
-        // Direct link to stock management for this product
-        data = `${baseUrl}/stock-movements?product=${product?.id || product?.sku}&quick_add=true`;
+        // Route existante vers la page de mouvements avec recherche préremplie
+        data = stockSearchUrl;
         break;
       case 'product_info':
         data = JSON.stringify({
@@ -84,7 +88,8 @@ const QRCodeGenerator = ({
           price: product?.price,
           category: product?.category,
           location: product?.location,
-          management_url: `${baseUrl}/products/${product?.id || product?.sku}?action=manage`
+          management_url: productSearchUrl,
+          stock_url: stockSearchUrl
         });
         break;
       case 'sku_only':
@@ -94,7 +99,7 @@ const QRCodeGenerator = ({
         data = customData;
         break;
       default:
-        data = `${baseUrl}/products/${product?.id || product?.sku}?action=manage`;
+        data = productSearchUrl;
     }
     setQrData(data);
   };
@@ -196,7 +201,6 @@ const QRCodeGenerator = ({
       // Add additional product details
       if (product) {
         pdf?.setFontSize(10);
-        const { isAdministrator, isManager } = useAuth();
         const canSeePrices = isAdministrator() || isManager();
         
         const details = [
@@ -229,7 +233,9 @@ const QRCodeGenerator = ({
 
   const copyQRData = () => {
     if (navigator.clipboard && qrData) {
-      navigator.clipboard?.writeText(qrData);
+      navigator.clipboard?.writeText(qrData)?.catch((error) => {
+        console.error('Error copying QR data:', error);
+      });
     }
   };
 

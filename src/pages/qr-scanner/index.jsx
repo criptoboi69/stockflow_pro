@@ -8,18 +8,19 @@ import CameraView from './components/CameraView';
 import ManualInput from './components/ManualInput';
 import ScanInstructions from './components/ScanInstructions';
 import ScanResults from './components/ScanResults';
+import { useAuth } from '../../contexts/AuthContext';
+import { getStoredLanguage, persistLanguage } from '../../utils/language';
+import productService from '../../services/productService';
 
 const QRScanner = () => {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('fr');
-  const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('camera');
-  const [currentRole, setCurrentRole] = useState('user');
-  const [currentCompany, setCurrentCompany] = useState({ name: 'StockFlow Pro' });
+  const { currentRole, currentCompany } = useAuth();
 
   const translations = {
     fr: {
@@ -54,25 +55,34 @@ const QRScanner = () => {
 
   // Load language preference on component mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') || 'fr';
-    setCurrentLanguage(savedLanguage);
+    setCurrentLanguage(getStoredLanguage());
   }, []);
 
   const handleScanSuccess = async (code) => {
     setIsProcessing(true);
     setError('');
-    
+
     try {
-      // Simulate API call to find product
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful scan result
+      if (!currentCompany?.id) {
+        throw new Error('Missing active company context');
+      }
+
+      const query = (code || '').trim();
+      const products = await productService.searchProducts(currentCompany.id, query);
+      const exact = products.find((item) => item?.sku?.toLowerCase() === query.toLowerCase() || item?.id === query);
+      const matchedProduct = exact || products?.[0] || null;
+
+      if (!matchedProduct) {
+        setError(t?.noProductFound);
+        return;
+      }
+
       setScanResult({
-        code: code,
+        code: query,
         timestamp: new Date(),
-        success: true
+        success: true,
+        product: matchedProduct
       });
-      
     } catch (error) {
       console.error('Scan processing error:', error);
       setError(t?.noProductFound);
@@ -112,7 +122,7 @@ const QRScanner = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         userRole={currentRole || 'user'}
-        currentTenant={currentCompany?.name || 'StockFlow Pro'}
+        currentTenant={currentCompany}
       />
       {/* Main Content */}
       <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
@@ -145,7 +155,7 @@ const QRScanner = () => {
                 onClick={() => {
                   const newLang = currentLanguage === 'fr' ? 'en' : 'fr';
                   setCurrentLanguage(newLang);
-                  localStorage.setItem('language', newLang);
+                  persistLanguage(newLang);
                 }}
                 className="text-text-secondary hover:text-text-primary"
               >
@@ -220,7 +230,6 @@ const QRScanner = () => {
                   <CameraView
                     onScanSuccess={handleScanSuccess}
                     onError={handleScanError}
-                    isScanning={isScanning}
                     currentLanguage={currentLanguage}
                   />
                 )}
@@ -258,7 +267,7 @@ const QRScanner = () => {
       {/* Quick Action Bar */}
       <QuickActionBar
         variant="floating"
-        userRole="team_member"
+        userRole={currentRole}
       />
     </div>
   );
