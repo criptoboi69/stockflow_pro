@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import storageService from './storageService';
+import { logger } from '../utils/logger';
 
 class ProductService {
   /**
@@ -16,7 +17,7 @@ class ProductService {
       // Convert snake_case to camelCase
       return data?.map(product => this.convertToCamelCase(product)) || [];
     } catch (error) {
-      console.error('Error fetching products:', error);
+      logger.error('Error fetching products:', error);
       throw error;
     }
   }
@@ -34,7 +35,7 @@ class ProductService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error fetching product:', error);
+      logger.error('Error fetching product:', error);
       throw error;
     }
   }
@@ -64,7 +65,7 @@ class ProductService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error creating product:', error);
+      logger.error('Error creating product:', error);
       throw error;
     }
   }
@@ -78,7 +79,7 @@ class ProductService {
   async updateProduct(productId, productData) {
     try {
       const snakeCaseData = this.convertToSnakeCase(productData);
-      console.log('[productService] updateProduct payload', {
+      logger.debug('[productService] updateProduct payload', {
         productId,
         keys: Object.keys(snakeCaseData || {}),
         image_urls: snakeCaseData?.image_urls?.length || 0,
@@ -91,7 +92,7 @@ class ProductService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error updating product:', error);
+      logger.error('Error updating product:', error);
       throw error;
     }
   }
@@ -113,7 +114,7 @@ class ProductService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting product:', error);
+      logger.error('Error deleting product:', error);
       throw error;
     }
   }
@@ -132,7 +133,7 @@ class ProductService {
 
       return data?.map(product => this.convertToCamelCase(product)) || [];
     } catch (error) {
-      console.error('Error searching products:', error);
+      logger.error('Error searching products:', error);
       throw error;
     }
   }
@@ -162,7 +163,7 @@ class ProductService {
 
       return data?.map(product => this.convertToCamelCase(product)) || [];
     } catch (error) {
-      console.error('Error filtering products:', error);
+      logger.error('Error filtering products:', error);
       throw error;
     }
   }
@@ -188,7 +189,7 @@ class ProductService {
 
       return { totalProducts, totalQuantity, lowStockCount };
     } catch (error) {
-      console.error('Error fetching product stats:', error);
+      logger.error('Error fetching product stats:', error);
       throw error;
     }
   }

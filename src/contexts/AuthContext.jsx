@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isDemoModeCheck } from '../lib/supabase';
+import { logger } from '../utils/logger';
+import safeStorage from '../utils/safeStorage';
 
 const AuthContext = createContext();
 
@@ -24,13 +26,13 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     const { data: authListener } = supabase?.auth?.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth state changed:', event, session?.user?.email);
+      logger.debug('[AuthContext] Auth state changed:', event, session?.user?.email);
       if (event === 'SIGNED_IN' && session?.user) {
         await loadUserData(session?.user);
       } else if (event === 'SIGNED_OUT') {
         clearAuthData();
       } else if (event === 'USER_UPDATED') {
-        console.log('[AuthContext] User updated:', session?.user);
+        logger.debug('[AuthContext] User updated:', session?.user);
       }
     });
 
@@ -49,21 +51,21 @@ export const AuthProvider = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
-      console.log('[AuthContext] Initializing auth...');
+      logger.debug('[AuthContext] Initializing auth...');
       const { data: { session }, error } = await supabase?.auth?.getSession();
       
       if (error) {
-        console.error('[AuthContext] Session error:', error);
+        logger.error('[AuthContext] Session error:', error);
       }
       
       if (session?.user) {
-        console.log('[AuthContext] Found existing session for:', session?.user?.email);
+        logger.debug('[AuthContext] Found existing session for:', session?.user?.email);
         await loadUserData(session?.user);
       } else {
-        console.log('[AuthContext] No existing session found');
+        logger.debug('[AuthContext] No existing session found');
       }
     } catch (error) {
-      console.error('[AuthContext] Auth initialization error:', error);
+      logger.error('[AuthContext] Auth initialization error:', error);
     } finally {
       setLoading(false);
       setInitialized(true);
@@ -72,12 +74,12 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserData = async (authUser) => {
     try {
-      console.log('[AuthContext] Loading user data for:', authUser?.email);
+      logger.debug('[AuthContext] Loading user data for:', authUser?.email);
       setUser(authUser);
 
       // DEMO MODE: Use real Supabase data
       if (isDemoModeCheck()) {
-        console.log('[AuthContext] Demo mode - using real Supabase data');
+        logger.debug('[AuthContext] Demo mode - using real Supabase data');
         
         // Determine role based on email
         let role = 'user';
@@ -132,11 +134,11 @@ export const AuthProvider = ({ children }) => {
         ?.single();
 
       if (profileError) {
-        console.error('[AuthContext] Profile error:', profileError);
+        logger.error('[AuthContext] Profile error:', profileError);
         
         // If profile doesn't exist, create it
         if (profileError?.code === 'PGRST116') {
-          console.log('[AuthContext] Profile not found, creating...');
+          logger.debug('[AuthContext] Profile not found, creating...');
           const { data: newProfile, error: createError } = await supabase
             ?.from('user_profiles')
             ?.insert({
@@ -149,18 +151,18 @@ export const AuthProvider = ({ children }) => {
             ?.single();
           
           if (createError) {
-            console.error('[AuthContext] Failed to create profile:', createError);
+            logger.error('[AuthContext] Failed to create profile:', createError);
             throw createError;
           }
           
-          console.log('[AuthContext] Profile created successfully');
+          logger.debug('[AuthContext] Profile created successfully');
           setProfile(newProfile);
           effectiveProfileRole = newProfile?.role || inferRoleFromEmail(authUser?.email);
         } else {
           throw profileError;
         }
       } else {
-        console.log('[AuthContext] Profile loaded:', profileData?.email);
+        logger.debug('[AuthContext] Profile loaded:', profileData?.email);
         setProfile(profileData);
         effectiveProfileRole = profileData?.role || inferRoleFromEmail(authUser?.email);
       }
@@ -175,7 +177,7 @@ export const AuthProvider = ({ children }) => {
           companiesData = data;
         }
       } catch (e) {
-        console.log('[AuthContext] RPC not available, using default company');
+        logger.debug('[AuthContext] RPC not available, using default company');
         // Assign default company for demo
         companiesData = [{
           company_id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
@@ -188,7 +190,7 @@ export const AuthProvider = ({ children }) => {
       // Fallback: if no companies, assign default
       if (!companiesData || companiesData.length === 0) {
         const fallbackRole = normalizeRole(effectiveProfileRole || inferRoleFromEmail(authUser?.email) || 'user');
-        console.log('[AuthContext] User has no companies, assigning default with role:', fallbackRole);
+        logger.debug('[AuthContext] User has no companies, assigning default with role:', fallbackRole);
         companiesData = [{
           company_id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
           company_name: 'StockFlow Demo',
@@ -219,23 +221,23 @@ export const AuthProvider = ({ children }) => {
 
         // Set the company and role
         if (companyToSet) {
-          console.log('[AuthContext] Setting company:', companyToSet?.company_name, 'Role:', companyToSet?.role);
+          logger.debug('[AuthContext] Setting company:', companyToSet?.company_name, 'Role:', companyToSet?.role);
           setCurrentCompany({
             id: companyToSet?.company_id,
             name: companyToSet?.company_name
           });
           setCurrentRole(normalizeRole(companyToSet?.role));
-          localStorage.setItem('currentCompanyId', companyToSet?.company_id);
+          safeStorage.set('currentCompanyId', companyToSet?.company_id);
         }
       } else {
-        console.warn('[AuthContext] User has no companies assigned');
+        logger.warn('[AuthContext] User has no companies assigned');
         // User has no companies - clear everything
         setCurrentCompany(null);
         setCurrentRole(null);
-        localStorage.removeItem('currentCompanyId');
+        safeStorage.remove('currentCompanyId');
       }
     } catch (error) {
-      console.error('[AuthContext] Error loading user data:', error);
+      logger.error('[AuthContext] Error loading user data:', error);
     } finally {
       // CRITICAL FIX: Always set loading to false after loading user data
       setLoading(false);
@@ -248,13 +250,13 @@ export const AuthProvider = ({ children }) => {
     setCompanies([]);
     setCurrentCompany(null);
     setCurrentRole(null);
-    localStorage.removeItem('currentCompanyId');
+    safeStorage.remove('currentCompanyId');
   };
 
   const signIn = async (email, password) => {
     try {
       setLoading(true);
-      console.log('[AuthContext] Starting sign in for:', email);
+      logger.debug('[AuthContext] Starting sign in for:', email);
       
       const { data, error } = await supabase?.auth?.signInWithPassword({
         email,
@@ -262,22 +264,22 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error('[AuthContext] Sign in error:', error);
+        logger.error('[AuthContext] Sign in error:', error);
         setLoading(false);
         throw error;
       }
       
-      console.log('[AuthContext] Sign in successful, loading user data...');
+      logger.debug('[AuthContext] Sign in successful, loading user data...');
       
       // Wait for user data to load before returning
       if (data?.user) {
         await loadUserData(data?.user);
-        console.log('[AuthContext] User data loaded successfully');
+        logger.debug('[AuthContext] User data loaded successfully');
       }
       
       return { data, error: null };
     } catch (error) {
-      console.error('[AuthContext] Sign in exception:', error);
+      logger.error('[AuthContext] Sign in exception:', error);
       setLoading(false);
       return { data: null, error };
     }
@@ -337,7 +339,7 @@ export const AuthProvider = ({ children }) => {
         name: company?.company_name
       });
       setCurrentRole(normalizeRole(company?.role));
-      localStorage.setItem('currentCompanyId', companyId);
+      safeStorage.set('currentCompanyId', companyId);
     }
   };
 

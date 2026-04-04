@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 const BUCKET_NAME = 'product-images';
 
@@ -26,7 +27,7 @@ class StorageService {
       formData.append('image', file);
       formData.append('productId', productId);
 
-      console.log('[upload] file selected', {
+      logger.debug('[upload] file selected', {
         name: file?.name,
         type: file?.type,
         size: file?.size,
@@ -34,21 +35,21 @@ class StorageService {
       });
 
       const uploadEndpoint = '/api/upload-product-image';
-      console.log('[upload] request started', { endpoint: uploadEndpoint });
+      logger.debug('[upload] request started', { endpoint: uploadEndpoint });
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData
       });
 
       const payload = await response.json();
-      console.log('[upload] response received', { ok: response.ok, status: response.status, payload });
+      logger.debug('[upload] response received', { ok: response.ok, status: response.status, payload });
       if (!response.ok) {
         throw new Error(payload?.error || 'Échec upload image');
       }
 
       return { filePath: payload.filePath, publicUrl: payload.publicUrl };
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       const msg = error?.message || error?.error_description || error?.details || JSON.stringify(error) || 'Échec upload image';
       throw new Error(msg);
     }
@@ -78,9 +79,9 @@ class StorageService {
 
       const { error } = await supabase?.storage?.from(BUCKET_NAME)?.remove([filePath]);
 
-      if (error) { console.error('[Storage upload supabase error]', error); throw error; }
+      if (error) { logger.error('[Storage upload supabase error]', error); throw error; }
     } catch (error) {
-      console.error('Delete error:', error);
+      logger.error('Delete error:', error);
       throw error;
     }
   }
@@ -97,12 +98,12 @@ class StorageService {
           sortBy: { column: 'name', order: 'asc' }
         });
 
-      if (error) { console.error('[Storage upload supabase error]', error); throw error; }
+      if (error) { logger.error('[Storage upload supabase error]', error); throw error; }
 
       // Filter by product ID
       return data?.filter(file => file?.name?.startsWith(productId)) || [];
     } catch (error) {
-      console.error('List error:', error);
+      logger.error('List error:', error);
       return [];
     }
   }
