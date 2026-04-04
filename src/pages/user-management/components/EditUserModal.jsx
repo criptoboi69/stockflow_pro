@@ -106,7 +106,7 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
       });
     } catch (error) {
       setErrors({ submit: 'Erreur lors de la mise à jour' });
-      console.error(error);
+      logger.error(error);
     } finally {
       setIsLoading(false);
     }

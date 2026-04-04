@@ -53,7 +53,7 @@ const BulkActionsBar = ({
       await onBulkAction(selectedAction);
       setSelectedAction('');
     } catch (error) {
-      console.error('Bulk action failed:', error);
+      logger.error('Bulk action failed:', error);
     } finally {
       setIsLoading(false);
     }

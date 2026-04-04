@@ -13,6 +13,7 @@ import UserDetailsModal from './components/UserDetailsModal';
 import BulkActionsBar from './components/BulkActionsBar';
 import UserFilters from './components/UserFilters';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import { userService } from '../../services/userService';
 
 const UserManagement = () => {
@@ -58,7 +59,7 @@ const UserManagement = () => {
       setUsers(data || []);
       setFilteredUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.error('Error loading users:', error);
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ const UserManagement = () => {
       if (error) throw error;
       setInvitations(data || []);
     } catch (error) {
-      console.error('Error loading invitations:', error);
+      logger.error('Error loading invitations:', error);
     }
   };
 
@@ -188,7 +189,7 @@ const UserManagement = () => {
       await loadUsers();
       setIsAddModalOpen(false);
     } catch (error) {
-      console.error('Error inviting user:', error);
+      logger.error('Error inviting user:', error);
     }
   };
 
@@ -213,7 +214,7 @@ const UserManagement = () => {
       setSelectedUser(null);
       return { ok: true };
     } catch (error) {
-      console.error('Error updating user:', error);
+      logger.error('Error updating user:', error);
       throw error;
     }
   };
@@ -230,7 +231,7 @@ const UserManagement = () => {
       if (error) throw error;
       await loadUsers();
     } catch (error) {
-      console.error('Error updating user:', error);
+      logger.error('Error updating user:', error);
     }
   };
 
@@ -248,7 +249,7 @@ const UserManagement = () => {
       if (error) throw error;
       await loadUsers();
     } catch (error) {
-      console.error('Error toggling user status:', error);
+      logger.error('Error toggling user status:', error);
       window.alert(error?.message || 'Erreur lors du changement de statut');
     }
   };
@@ -263,7 +264,7 @@ const UserManagement = () => {
       if (error) throw error;
       await loadUsers();
     } catch (error) {
-      console.error('Error removing user:', error);
+      logger.error('Error removing user:', error);
     }
   };
 
