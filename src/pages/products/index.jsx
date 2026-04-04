@@ -30,7 +30,7 @@ const Products = () => {
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState('list');
+  const [viewMode, setViewMode] = useState(isMobile ? 'card' : 'list'); // Default to card on mobile
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -508,8 +508,8 @@ const Products = () => {
           }
         />
 
-        {/* Enhanced Content with responsive container */}
-        <div className="container-responsive py-4 sm:py-6">
+        {/* Enhanced Content with responsive container - reduced spacing on mobile */}
+        <div className="container-responsive py-2 sm:py-4 px-3 sm:px-4">
           {/* Enhanced Filters with mobile-first design */}
           <ProductFilters
             searchQuery={searchQuery}
