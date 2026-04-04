@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import Icon from '../AppIcon';
 import ThemeToggle from './ThemeToggle';
 import NotificationBell from './NotificationBell';
+import useNotifications from '../../hooks/useNotifications';
 import { useAuth } from '../../contexts/AuthContext';
 
 const SidebarNavigation = ({
@@ -26,6 +27,15 @@ const SidebarNavigation = ({
   } catch (e) { console.warn('Auth not ready:', e); }
   const tenantName = currentCompany?.name || (typeof currentTenant === 'string' ? currentTenant : currentTenant?.name) || 'StockFlow Pro';
   const displayName = profile?.full_name || profile?.email?.split('@')?.[0] || 'Utilisateur';
+  
+  // Use notifications hook
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead
+  } = useNotifications();
+  
   const normalizedRole = (() => {
     const raw = String(currentRole || userRole || 'user').toLowerCase();
     if (raw === 'admin') return 'administrator';
@@ -183,7 +193,10 @@ const SidebarNavigation = ({
           {/* Mobile Actions */}
           <div className="flex items-center gap-2">
             <NotificationBell
-              notifications={[]}
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
               size="sm"
             />
             <ThemeToggle size="sm" />
@@ -223,7 +236,10 @@ const SidebarNavigation = ({
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
               <NotificationBell
-                notifications={[]}
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
                 size={isCollapsed ? "sm" : "md"}
               />
               <ThemeToggle

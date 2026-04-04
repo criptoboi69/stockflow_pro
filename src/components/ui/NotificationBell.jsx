@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const NotificationBell = ({ notifications = [], onViewAll, size = 'md' }) => {
+const NotificationBell = ({ 
+  notifications = [], 
+  unreadCount: propUnreadCount, 
+  onViewAll, 
+  onMarkAsRead, 
+  onMarkAllAsRead,
+  size = 'md' 
+}) => {
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
@@ -63,7 +70,7 @@ const NotificationBell = ({ notifications = [], onViewAll, size = 'md' }) => {
     }
   };
 
-  const unreadCount = notifications?.filter(n => !n?.read)?.length || 0;
+  const unreadCount = propUnreadCount ?? (notifications?.filter(n => !n?.read)?.length || 0);
   const recentNotifications = notifications?.slice(0, 10) || [];
 
   return (
@@ -90,17 +97,29 @@ const NotificationBell = ({ notifications = [], onViewAll, size = 'md' }) => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
-            {onViewAll && (
-              <button
-                onClick={() => {
-                  onViewAll();
-                  setIsOpen(false);
-                }}
-                className="text-xs text-primary hover:text-primary/80 font-medium"
-              >
-                Voir tout
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && onMarkAllAsRead && (
+                <button
+                  onClick={() => {
+                    onMarkAllAsRead();
+                  }}
+                  className="text-xs text-primary hover:text-primary/80 font-medium"
+                >
+                  Tout lire
+                </button>
+              )}
+              {onViewAll && (
+                <button
+                  onClick={() => {
+                    onViewAll();
+                    setIsOpen(false);
+                  }}
+                  className="text-xs text-primary hover:text-primary/80 font-medium"
+                >
+                  Voir tout
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Content */}
@@ -120,6 +139,9 @@ const NotificationBell = ({ notifications = [], onViewAll, size = 'md' }) => {
                       key={notification?.id}
                       className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer ${!notification?.read ? 'bg-primary/5' : ''}`}
                       onClick={() => {
+                        if (onMarkAsRead && !notification?.read) {
+                          onMarkAsRead(notification?.id);
+                        }
                         if (notification?.onClick) {
                           notification.onClick();
                         }
