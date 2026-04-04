@@ -2,9 +2,11 @@
 
 ## ✅ HTTPS Activé via Tailscale
 
-**URL HTTPS :** https://jordan-1.tail519d0c.ts.net/
+**URL HTTPS StockFlow :** https://jordan-1.tail519d0c.ts.net/stock
 
-Cette URL remplace `http://100.66.171.51:4028/` pour un accès sécurisé.
+**URL HTTPS OpenClaw :** https://jordan-1.tail519d0c.ts.net/
+
+StockFlow est accessible via le path `/stock` pour coexister avec OpenClaw.
 
 ---
 
