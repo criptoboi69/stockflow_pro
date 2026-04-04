@@ -7,7 +7,6 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import GeneralParametersTab from './components/GeneralParametersTab';
 import NotificationSettingsTab from './components/NotificationSettingsTab';
-import CompanyManagementTab from './components/CompanyManagementTab';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { logger } from '../../utils/logger';
@@ -35,13 +34,7 @@ const Settings = () => {
       description: 'Alertes, emails et intégrations webhook',
       roles: ['super_admin', 'administrator', 'manager', 'user']
     },
-    {
-      id: 'companies',
-      label: 'Gestion des entreprises',
-      icon: 'Building2',
-      description: 'Administration multi-tenant et configuration client',
-      roles: ['super_admin']
-    },
+
     {
       id: 'preferences',
       label: 'Préférences utilisateur',
@@ -96,7 +89,7 @@ const Settings = () => {
     const allSettings = {
       general: JSON.parse(localStorage.getItem('settings_general') || '{}'),
       notifications: JSON.parse(localStorage.getItem('settings_notifications') || '{}'),
-      companies: JSON.parse(localStorage.getItem('settings_companies') || '{}'),
+
       preferences: JSON.parse(localStorage.getItem('settings_preferences') || '{}'),
       exportedAt: new Date()?.toISOString(),
       userRole: currentRole,
