@@ -13,12 +13,16 @@ const LoginForm = ({
   selectedCredentials
 }) => {
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle, loading: authLoading, user, currentCompany } = useAuth();
+  const { signIn, signUp, loading: authLoading, user, currentCompany } = useAuth();
   const [isSignUpMode, setIsSignUpMode] = useState(false);
+  const [signupMode, setSignupMode] = useState('create'); // 'create' | 'join'
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     fullName: '',
+    companyId: '',
+    companyName: '',
     rememberMe: false
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -86,7 +90,7 @@ const LoginForm = ({
       rememberMe: "Se souvenir de moi",
       loginButton: "Se connecter",
       signUpButton: "S\'inscrire",
-      googleButton: "Continuer avec Google",
+      googleButton: "Continuer avec Google", // Supprimé
       forgotPassword: "Mot de passe oublié ?",
       demoTitle: "Comptes de démonstration",
       invalidCredentials: "E-mail ou mot de passe incorrect",
@@ -95,6 +99,17 @@ const LoginForm = ({
       fullNameRequired: "Le nom complet est requis",
       signUpTitle: "Créer un compte",
       signUpSubtitle: "Inscrivez-vous pour commencer",
+      signupModeCreate: "Créer une nouvelle société",
+      signupModeJoin: "Rejoindre une société existante",
+      companyIdLabel: "ID de la société",
+      companyIdPlaceholder: "ex: 123e4567-e89b-12d3-a456-426614174000",
+      companyNameLabel: "Nom de la société",
+      companyNamePlaceholder: "ex: Ma Société SAS",
+      confirmPasswordLabel: "Confirmer le mot de passe",
+      confirmPasswordPlaceholder: "Confirmez votre mot de passe",
+      passwordMismatch: "Les mots de passe ne correspondent pas",
+      companyIdRequired: "L'ID de la société est requis",
+      companyNameRequired: "Le nom de la société est requis",
       alreadyHaveAccount: "Vous avez déjà un compte ?",
       signInLink: "Se connecter",
       noAccount: "Pas encore de compte ?",
@@ -114,7 +129,7 @@ const LoginForm = ({
       rememberMe: "Remember me",
       loginButton: "Sign In",
       signUpButton: "Sign Up",
-      googleButton: "Continue with Google",
+      googleButton: "Continue with Google", // Removed
       forgotPassword: "Forgot password?",
       demoTitle: "Demo Accounts",
       invalidCredentials: "Invalid email or password",
@@ -123,6 +138,17 @@ const LoginForm = ({
       fullNameRequired: "Full name is required",
       signUpTitle: "Create Account",
       signUpSubtitle: "Sign up to get started",
+      signupModeCreate: "Create a new company",
+      signupModeJoin: "Join an existing company",
+      companyIdLabel: "Company ID",
+      companyIdPlaceholder: "e.g. 123e4567-e89b-12d3-a456-426614174000",
+      companyNameLabel: "Company Name",
+      companyNamePlaceholder: "e.g. My Company SAS",
+      confirmPasswordLabel: "Confirm Password",
+      confirmPasswordPlaceholder: "Confirm your password",
+      passwordMismatch: "Passwords do not match",
+      companyIdRequired: "Company ID is required",
+      companyNameRequired: "Company name is required",
       alreadyHaveAccount: "Already have an account?",
       signInLink: "Sign in",
       noAccount: "Don\'t have an account?",
@@ -152,8 +178,22 @@ const LoginForm = ({
       newErrors.password = t?.passwordRequired;
     }
 
-    if (isSignUpMode && !formData?.fullName?.trim()) {
-      newErrors.fullName = t?.fullNameRequired;
+    if (isSignUpMode) {
+      if (!formData?.fullName?.trim()) {
+        newErrors.fullName = t?.fullNameRequired;
+      }
+
+      if (formData?.password !== formData?.confirmPassword) {
+        newErrors.confirmPassword = t?.passwordMismatch;
+      }
+
+      if (signupMode === 'join' && !formData?.companyId?.trim()) {
+        newErrors.companyId = t?.companyIdRequired;
+      }
+
+      if (signupMode === 'create' && !formData?.companyName?.trim()) {
+        newErrors.companyName = t?.companyNameRequired;
+      }
     }
 
     setErrors(newErrors);
@@ -171,11 +211,15 @@ const LoginForm = ({
     try {
       if (isSignUpMode) {
         // Sign up flow
-        const { data, error } = await signUp(
-          formData?.email, 
-          formData?.password, 
-          formData?.fullName
-        );
+        const signupData = {
+          email: formData?.email,
+          password: formData?.password,
+          fullName: formData?.fullName,
+          companyId: signupMode === 'join' ? formData?.companyId : null,
+          companyName: signupMode === 'create' ? formData?.companyName : null
+        };
+
+        const { data, error } = await signUp(signupData);
 
         if (error) {
           console.error('[LoginForm] Sign up error:', error);
@@ -187,7 +231,7 @@ const LoginForm = ({
         if (data?.user) {
           setErrors({ success: t?.checkEmail });
           // Clear form
-          setFormData({ email: '', password: '', fullName: '', rememberMe: false });
+          setFormData({ email: '', password: '', confirmPassword: '', fullName: '', companyId: '', companyName: '', rememberMe: false });
           setIsLoading(false);
         }
       } else {
@@ -233,25 +277,6 @@ const LoginForm = ({
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      const { error } = await signInWithGoogle();
-
-      if (error) {
-        setErrors({ submit: error?.message });
-      }
-      // OAuth redirect happens automatically
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      setErrors({ submit: error?.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleDemoLogin = (email, password) => {
     setFormData(prev => ({ ...prev, email, password }));
   };
@@ -293,31 +318,10 @@ const LoginForm = ({
           </div>
         </div>
       )}
-      {/* Google Sign-In Button */}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleGoogleSignIn}
-        loading={isLoading}
-        fullWidth
-        className="h-12 mb-4"
-      >
-        <Icon name="Chrome" size={20} className="mr-2" />
-        {t?.googleButton}
-      </Button>
-
-      {/* Divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border"></div>
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-surface text-text-muted">{t?.orDivider}</span>
-        </div>
-      </div>
-
       {/* Login Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+
+
         {isSignUpMode && (
           <Input
             type="text"
@@ -363,7 +367,79 @@ const LoginForm = ({
           </button>
         </div>
 
-        {/* Remember Me */}
+        {isSignUpMode && (
+          <Input
+            type={showPassword ? "text" : "password"}
+            label={t?.confirmPasswordLabel}
+            placeholder={t?.confirmPasswordPlaceholder}
+            value={formData?.confirmPassword}
+            onChange={(e) => handleInputChange('confirmPassword', e?.target?.value)}
+            error={errors?.confirmPassword}
+            required
+            disabled={isLoading}
+          />
+        )}
+
+        {/* Signup Mode Toggle */}
+        {isSignUpMode && (
+          <div className="space-y-3">
+            <label className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="radio"
+                checked={signupMode === 'create'}
+                onChange={() => setSignupMode('create')}
+                className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 mt-1"
+                disabled={isLoading}
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-text-primary">{t?.signupModeCreate}</span>
+              </div>
+            </label>
+
+            <label className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="radio"
+                checked={signupMode === 'join'}
+                onChange={() => setSignupMode('join')}
+                className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 mt-1"
+                disabled={isLoading}
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-text-primary">{t?.signupModeJoin}</span>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* Company ID Field (Join mode) */}
+        {isSignUpMode && signupMode === 'join' && (
+          <Input
+            type="text"
+            label={t?.companyIdLabel}
+            placeholder={t?.companyIdPlaceholder}
+            value={formData?.companyId}
+            onChange={(e) => handleInputChange('companyId', e?.target?.value)}
+            error={errors?.companyId}
+            required
+            disabled={isLoading}
+          />
+        )}
+
+        {/* Company Name Field (Create mode) */}
+        {isSignUpMode && signupMode === 'create' && (
+          <Input
+            type="text"
+            label={t?.companyNameLabel}
+            placeholder={t?.companyNamePlaceholder}
+            value={formData?.companyName}
+            onChange={(e) => handleInputChange('companyName', e?.target?.value)}
+            error={errors?.companyName}
+            required
+            disabled={isLoading}
+          />
+        )}
+
+        {/* Remember Me & Forgot Password */}
         <div className="flex items-center justify-between">
           {!isSignUpMode && (
             <label className="flex items-center space-x-2 cursor-pointer">

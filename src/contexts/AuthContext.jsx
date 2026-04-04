@@ -285,9 +285,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signUp = async (email, password, fullName) => {
+  const signUp = async (signupData) => {
     try {
-      const { data, error } = await supabase?.auth?.signUp({
+      // Support both old signature (email, password, fullName) and new object format
+      const email = typeof signupData === 'string' ? signupData : signupData?.email;
+      const password = typeof signupData === 'string' ? password : signupData?.password;
+      const fullName = typeof signupData === 'string' ? fullName : signupData?.fullName;
+      const companyId = signupData?.companyId;
+      const companyName = signupData?.companyName;
+
+      // Create auth user
+      const { data: authData, error: authError } = await supabase?.auth?.signUp({
         email,
         password,
         options: {
@@ -297,9 +305,101 @@ export const AuthProvider = ({ children }) => {
         }
       });
 
-      if (error) throw error;
-      return { data, error: null };
+      if (authError) throw authError;
+      if (!authData?.user) throw new Error('User creation failed');
+
+      const userId = authData.user.id;
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        ?.from('user_profiles')
+        ?.insert({
+          id: userId,
+          email: email,
+          full_name: fullName,
+          role: 'super_admin' // Default role for new signups
+        });
+
+      if (profileError) {
+        logger.error('[AuthContext] Profile creation error:', profileError);
+        throw profileError;
+      }
+
+      // Handle company creation/joining
+      if (companyName && !companyId) {
+        // CREATE NEW COMPANY
+        logger.debug('[AuthContext] Creating new company:', companyName);
+        
+        const { data: companyData, error: companyError } = await supabase
+          ?.from('companies')
+          ?.insert({
+            name: companyName,
+            created_by: userId
+          })
+          ?.select()
+          ?.single();
+
+        if (companyError) {
+          logger.error('[AuthContext] Company creation error:', companyError);
+          throw companyError;
+        }
+
+        // Link user to company
+        const { error: linkError } = await supabase
+          ?.from('user_company_roles')
+          ?.insert({
+            user_id: userId,
+            company_id: companyData?.id,
+            role: 'super_admin',
+            is_primary: true,
+            is_active: true
+          });
+
+        if (linkError) {
+          logger.error('[AuthContext] Company link error:', linkError);
+          throw linkError;
+        }
+
+        logger.debug('[AuthContext] Company created and user linked:', companyData?.id);
+
+      } else if (companyId && !companyName) {
+        // JOIN EXISTING COMPANY
+        logger.debug('[AuthContext] Joining existing company:', companyId);
+        
+        // Verify company exists
+        const { data: companyData, error: companyError } = await supabase
+          ?.from('companies')
+          ?.select('id, name')
+          ?.eq('id', companyId)
+          ?.single();
+
+        if (companyError || !companyData) {
+          logger.error('[AuthContext] Company not found:', companyId);
+          throw new Error('Société non trouvée. Vérifiez l\'ID de la société.');
+        }
+
+        // Link user to company
+        const { error: linkError } = await supabase
+          ?.from('user_company_roles')
+          ?.insert({
+            user_id: userId,
+            company_id: companyId,
+            role: 'user', // Default role for joining
+            is_primary: true,
+            is_active: true
+          });
+
+        if (linkError) {
+          logger.error('[AuthContext] Company join error:', linkError);
+          throw new Error('Erreur lors de la liaison à la société.');
+        }
+
+        logger.debug('[AuthContext] User joined company:', companyId);
+      }
+
+      return { data: authData, error: null };
     } catch (error) {
+      logger.error('[AuthContext] Sign up exception:', error);
       return { data: null, error };
     }
   };
