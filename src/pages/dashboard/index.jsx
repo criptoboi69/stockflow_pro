@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
@@ -11,7 +11,9 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import PageHeader from '../../components/ui/PageHeader';
 import productService from '../../services/productService';
+import stockMovementService from '../../services/stockMovementService';
 import useCompanySettings from '../../hooks/useCompanySettings';
+import { logger } from '../../utils/logger';
 
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -109,9 +111,28 @@ const Dashboard = () => {
           }));
         setStockAlerts(alerts);
 
-        const activities = products
-          .slice(0, 5)
-          .map((p) => ({
+        // Load recent stock movements for activity timeline
+        try {
+          const movements = await stockMovementService.getStockMovements(
+            currentCompany.id,
+            { page: 1, pageSize: 10 }
+          );
+          
+          const activities = (movements || []).map((m) => ({
+            id: m?.id,
+            type: m?.movement_type === 'in' ? 'stock_in' : 
+                  m?.movement_type === 'out' ? 'stock_out' : 'adjustment',
+            title: m?.movement_type === 'in' ? 'Entrée de stock' :
+                   m?.movement_type === 'out' ? 'Sortie de stock' : 'Ajustement',
+            description: `${m?.product_name || 'Produit'} (${m?.quantity || 0} unités)`,
+            user: m?.created_by_email || 'Système',
+            timestamp: m?.created_at || new Date().toISOString()
+          }));
+          setRecentActivities(activities);
+        } catch (error) {
+          logger.error('Error loading stock movements for dashboard:', error);
+          // Fallback to products-based activities
+          const activities = products.slice(0, 5).map((p) => ({
             id: p?.id,
             type: 'product_added',
             title: 'Produit disponible',
@@ -119,17 +140,24 @@ const Dashboard = () => {
             user: 'Système',
             timestamp: p?.updated_at || p?.created_at || new Date().toISOString()
           }));
-        setRecentActivities(activities);
+          setRecentActivities(activities);
+        }
 
-        const inventoryValue = products.reduce((acc, p) => acc + (Number(p?.quantity || 0) * Number(p?.price || 0)), 0);
+        // Memoized inventory value calculation
+        const inventoryValue = products.reduce((acc, p) => 
+          acc + (Number(p?.quantity || 0) * Number(p?.price || 0)), 0
+        );
+        const currency = companySettings?.currency || 'EUR';
+        const currencySymbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency;
+        
         setQuickStats([
           { label: 'Produits actifs', value: String(totalProducts), icon: 'Package' },
           { label: 'Articles en stock', value: String(totalQuantity), icon: 'Archive' },
           { label: 'Alertes stock', value: String(lowStockCount), icon: 'AlertTriangle' },
-          { label: 'Valeur stock', value: `€${Math.round(inventoryValue).toLocaleString('fr-FR')}`, unit: '', icon: 'Euro' }
+          { label: 'Valeur stock', value: `${currencySymbol}${Math.round(inventoryValue).toLocaleString('fr-FR')}`, unit: '', icon: 'Euro' }
         ]);
       } catch (error) {
-        console.error('Error loading dashboard KPI:', error);
+        logger.error('Error loading dashboard KPI:', error);
       } finally {
         setLoading(false);
       }

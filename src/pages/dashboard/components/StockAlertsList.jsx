@@ -1,8 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
 const StockAlertsList = ({ alerts, onViewAll, loading = false }) => {
+  const navigate = useNavigate();
   const getAlertSeverity = (currentStock, minStock) => {
     if (currentStock === 0) return { level: 'critical', color: 'text-error', bg: 'bg-error/10' };
     if (currentStock <= minStock) return { level: 'warning', color: 'text-warning', bg: 'bg-warning/10' };
@@ -92,6 +94,7 @@ const StockAlertsList = ({ alerts, onViewAll, loading = false }) => {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => navigate(`/products?id=${alert?.id}`)}
                       className="w-8 h-8 text-text-muted hover:text-text-primary"
                     >
                       <Icon name="ExternalLink" size={14} />
