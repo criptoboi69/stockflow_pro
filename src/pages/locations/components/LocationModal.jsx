@@ -183,7 +183,7 @@ const LocationModal = ({
       await onSave(formData);
       onClose();
     } catch (error) {
-      console.error('Error saving location:', error);
+      logger.error('Error saving location:', error);
       setErrors((prev) => ({
         ...prev,
         submit: error?.message || "Échec de l'enregistrement de l'emplacement",

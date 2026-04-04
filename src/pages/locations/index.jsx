@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
+import { logger } from '../../utils/logger';
 
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
@@ -69,13 +71,13 @@ const LocationsPage = () => {
 
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const data = await locationService.getLocations(currentCompany.id);
       setLocations(data);
       setFilteredLocations(data);
     } catch (err) {
-      console.error('Error loading locations:', err);
+      logger.error('Error loading locations:', err);
       setError('Failed to load locations. Please try again.');
       setLocations([]);
       setFilteredLocations([]);
@@ -175,13 +177,13 @@ const LocationsPage = () => {
       } else if (modalState?.mode === 'edit') {
         await locationService.updateLocation(modalState?.location?.id, formData);
       }
-      
+
       // Reload locations to get fresh data
       await loadLocations();
       handleCloseModal();
       pushFeedback('success', modalState?.mode === 'add' ? 'Emplacement ajouté avec succès.' : 'Emplacement mis à jour avec succès.');
     } catch (err) {
-      console.error('Error saving location:', err);
+      logger.error('Error saving location:', err);
       throw err; // Re-throw to let modal handle the error display
     }
   };
@@ -222,15 +224,15 @@ const LocationsPage = () => {
     try {
       await locationService.deleteLocation(locationId, currentCompany.id);
       await loadLocations();
-      
+
       // Close modal if it's open
       if (modalState?.isOpen) {
         handleCloseModal();
       }
       pushFeedback('success', 'Emplacement supprimé avec succès.');
     } catch (err) {
-      console.error('Error deleting location:', err);
-      pushFeedback('error', err?.message || 'Échec de la suppression de l’emplacement.');
+      logger.error('Error deleting location:', err);
+      pushFeedback('error', err?.message || 'Echec de la suppression de l\'emplacement.');
     }
   };
 
@@ -514,7 +516,7 @@ const LocationsPage = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 text-sm text-text-muted">{location?.code || '—'}</td>
+                          <td className="p-4 text-sm text-text-muted">{location?.code || '-'}</td>
                           <td className="p-4 text-sm text-text-primary">{getTypeLabel(location?.type)}</td>
                           <td className="p-4">
                             <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(location?.status)} bg-current/10`}>
@@ -522,9 +524,9 @@ const LocationsPage = () => {
                             </span>
                           </td>
                           <td className="p-4 text-sm text-text-primary">
-                            {location?.capacity?.toLocaleString() || '—'}
+                            {location?.capacity?.toLocaleString() || '-'}
                           </td>
-                          <td className="p-4 text-sm text-text-muted">{location?.manager || '—'}</td>
+                          <td className="p-4 text-sm text-text-muted">{location?.manager || '-'}</td>
                           <td className="p-4">
                             <div className="flex items-center justify-end space-x-1" onClick={(e) => e.stopPropagation()}>
                               {canEdit && (
@@ -554,8 +556,8 @@ const LocationsPage = () => {
             ) : (
               <ResponsiveGrid cols="1 lg:2 xl:3" gap="4 lg:6">
                 {filteredLocations?.map((location) => (
-                  <div 
-                    key={location?.id} 
+                  <div
+                    key={location?.id}
                     className="bg-card border border-border rounded-lg p-4 lg:p-6 card-shadow hover:shadow-lg transition-shadow cursor-pointer"
                     onClick={() => handleViewLocation(location)}
                   >
@@ -583,7 +585,7 @@ const LocationsPage = () => {
                       <div className="flex items-center justify-between text-xs lg:text-sm">
                         <span className="text-text-muted">Capacité</span>
                         <span className="text-text-primary font-medium">
-                          {location?.capacity?.toLocaleString() || '—'}
+                          {location?.capacity?.toLocaleString() || '-'}
                         </span>
                       </div>
 
@@ -637,7 +639,7 @@ const LocationsPage = () => {
                   {error ? 'Erreur de chargement' : 'Aucun emplacement trouvé'}
                 </h3>
                 <p className="text-text-muted">
-                  {error 
+                  {error
                     ? 'Veuillez vérifier votre connexion et réessayer.'
                     : 'Aucun emplacement ne correspond aux critères de recherche actuels.'}
                 </p>
