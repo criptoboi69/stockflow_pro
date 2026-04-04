@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
@@ -166,7 +167,7 @@ const Dashboard = () => {
     loadDashboardData();
   }, [currentCompany?.id]);
 
-  const handleKPIClick = (index) => {
+  const handleKPIClick = useCallback((index) => {
     switch (index) {
       case 0:
         navigate('/products');
@@ -180,7 +181,35 @@ const Dashboard = () => {
       default:
         break;
     }
-  };
+  }, [navigate]);
+
+  // Generate chart data from products (7 days simulation)
+  const chartData = useMemo(() => {
+    const days = 7;
+    const data = [];
+    const now = new Date();
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      
+      // Simulate stock evolution based on current products
+      const baseValue = products.length > 0 
+        ? products.reduce((acc, p) => acc + Number(p?.quantity || 0), 0) 
+        : 0;
+      
+      // Add some variance for visualization
+      const variance = Math.sin(i / 2) * (baseValue * 0.1);
+      
+      data.push({
+        date: date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+        quantity: Math.round(baseValue + variance),
+        value: Math.round(baseValue * 10 + variance * 10)
+      });
+    }
+    
+    return data;
+  }, [products]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -320,12 +349,57 @@ const Dashboard = () => {
             
             {loading ? (
               <div className="h-48 sm:h-64 bg-muted rounded-xl animate-pulse" />
+            ) : chartData?.length > 0 ? (
+              <div className="h-48 sm:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorQuantity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#9ca3af" 
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="#9ca3af" 
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      labelStyle={{ color: '#374151', fontWeight: 600 }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="quantity" 
+                      stroke="#8884d8" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorQuantity)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
               <div className="h-48 sm:h-64 flex items-center justify-center bg-muted/30 rounded-xl border-2 border-dashed border-border">
                 <div className="text-center px-4">
                   <Icon name="BarChart3" size={40} className="sm:size-12 text-text-muted mx-auto mb-3" />
-                  <p className="text-text-muted font-medium text-sm sm:text-base">Graphique d'évolution</p>
-                  <p className="text-text-muted text-xs sm:text-sm">Les données seront affichées ici</p>
+                  <p className="text-text-muted font-medium text-sm sm:text-base">Aucune donnée disponible</p>
+                  <p className="text-text-muted text-xs sm:text-sm">Ajoutez des produits pour voir l'évolution</p>
                 </div>
               </div>
             )}

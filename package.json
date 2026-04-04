@@ -58,7 +58,7 @@
     "react-hook-form": "^7.55.0",
     "react-router-dom": "6.0.2",
     "react-router-hash-link": "^2.4.3",
-    "recharts": "^2.15.2",
+    "recharts": "^2.15.4",
     "redux": "^5.0.1",
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.3.1",
