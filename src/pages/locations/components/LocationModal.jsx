@@ -369,20 +369,65 @@ const LocationModal = ({
                 />
               </div>
 
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-lg bg-primary/10 p-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-text-primary">Photos</label>
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="flex items-center gap-2 mb-3">
                     <Icon name="Image" size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-text-primary">Photos de l'emplacement</span>
+                    <span className="text-xs text-text-muted">(max 5)</span>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-text-primary">Photos emplacement</div>
-                    <div className="mt-1 text-sm text-text-muted">
-                      Bonne idée produit, mais la base ne possède pas encore les colonnes image pour les emplacements.
+                  
+                  {isReadOnly ? (
+                    <div className="text-sm text-text-muted">
+                      {formData?.imageUrls?.length > 0 
+                        ? `${formData.imageUrls.length} photo(s) associée(s)` 
+                        : 'Aucune photo'}
                     </div>
-                    <div className="mt-2 text-xs text-text-muted">
-                      Prochaine étape nécessaire : migration DB pour `image_url`, `image_file_path`, `image_urls`, `image_file_paths`.
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => e?.target?.files?.[0] && handleImageUpload(e.target.files[0])}
+                        disabled={isUploadingImage || (formData?.imageUrls?.length || 0) >= 5}
+                        className="block w-full text-sm text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-md file:border file:border-border file:bg-surface file:text-text-primary file:hover:bg-muted"
+                      />
+                      {isUploadingImage && (
+                        <div className="flex items-center gap-2 text-sm text-text-muted">
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          <span>Upload en cours...</span>
+                        </div>
+                      )}
+                      {(formData?.imageUrls?.length || 0) >= 5 && (
+                        <p className="text-xs text-warning">Maximum 5 photos atteintes</p>
+                      )}
                     </div>
-                  </div>
+                  )}
+                  
+                  {/* Image previews */}
+                  {formData?.imageUrls?.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 mt-3">
+                      {formData.imageUrls.map((url, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newUrls = formData.imageUrls.filter((_, i) => i !== idx);
+                                const newPaths = formData.imageFilePaths?.filter((_, i) => i !== idx) || [];
+                                setFormData(prev => ({ ...prev, imageUrls: newUrls, imageFilePaths: newPaths }));
+                              }}
+                              className="absolute top-1 right-1 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center hover:bg-error/80"
+                            >
+                              <Icon name="X" size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -478,7 +523,7 @@ const LocationModal = ({
                 {isReadOnly ? 'Fermer' : 'Annuler'}
               </Button>
 
-              {canEditThis && (
+              {(!isReadOnly || mode === 'add') && (
                 <Button variant="default" onClick={handleSave} loading={isLoading} className="w-full sm:w-auto">
                   {mode === 'add' ? 'Ajouter' : 'Enregistrer'}
                 </Button>
