@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const NotificationBell = ({ notifications = [], onViewAll }) => {
+const NotificationBell = ({ notifications = [], onViewAll, size = 'md' }) => {
+  const sizeClasses = {
+    sm: 'w-8 h-8',
+    md: 'w-10 h-10',
+    lg: 'w-12 h-12'
+  };
+  const buttonSize = sizeClasses[size] || sizeClasses.md;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -65,10 +71,10 @@ const NotificationBell = ({ notifications = [], onViewAll }) => {
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-10 h-10 rounded-lg bg-muted/50 hover:bg-muted transition-colors flex items-center justify-center"
+        className={`relative ${buttonSize} rounded-lg bg-muted/50 hover:bg-muted transition-colors flex items-center justify-center`}
         aria-label="Notifications"
       >
-        <Icon name="Bell" size={20} className="text-text-muted" />
+        <Icon name="Bell" size={size === 'sm' ? 18 : 20} className="text-text-muted" />
         
         {/* Unread badge */}
         {unreadCount > 0 && (

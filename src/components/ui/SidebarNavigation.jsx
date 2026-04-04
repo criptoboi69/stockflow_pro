@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Icon from '../AppIcon';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../../contexts/AuthContext';
 
 const SidebarNavigation = ({
@@ -179,8 +180,14 @@ const SidebarNavigation = ({
             </div>
           </div>
 
-          {/* Mobile Theme Toggle */}
-          <ThemeToggle size="sm" />
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-2">
+            <NotificationBell
+              notifications={[]}
+              size="sm"
+            />
+            <ThemeToggle size="sm" />
+          </div>
         </div>
       </div>
 
@@ -213,8 +220,12 @@ const SidebarNavigation = ({
           }
           
           <div className="flex items-center space-x-2">
-            {/* Desktop Theme Toggle */}
-            <div className="hidden lg:block">
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex items-center gap-2">
+              <NotificationBell
+                notifications={[]}
+                size={isCollapsed ? "sm" : "md"}
+              />
               <ThemeToggle
                 size={isCollapsed ? "sm" : "md"}
                 variant="dropdown"

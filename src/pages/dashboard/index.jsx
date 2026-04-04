@@ -11,7 +11,6 @@ import QuickStatsCard from './components/QuickStatsCard';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import PageHeader from '../../components/ui/PageHeader';
-import NotificationBell from '../../components/ui/NotificationBell';
 import productService from '../../services/productService';
 import stockMovementService from '../../services/stockMovementService';
 import useCompanySettings from '../../hooks/useCompanySettings';
@@ -220,52 +219,38 @@ const Dashboard = () => {
         currentTenant={currentCompany}
       />
       <main className={`transition-all duration-200 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-72'} pt-14 sm:pt-16 lg:pt-0`}>
-        {/* Custom Header with Notification Bell */}
-        <div className="bg-surface border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl lg:text-2xl font-semibold text-text-primary">Tableau de bord</h1>
-                <p className="text-sm text-text-muted mt-1">
-                  {new Date()?.toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <NotificationBell
-                  notifications={recentActivities?.map(a => ({
-                    ...a,
-                    read: false
-                  })) || []}
-                  onViewAll={() => navigate('/stock-movements')}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/qr-scanner')}
-                  iconName="QrCode"
-                  iconPosition="left"
-                  className="text-xs lg:text-sm"
-                >
-                  Scanner QR
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/products?action=add')}
-                  iconName="Plus"
-                  iconPosition="left"
-                  className="text-xs lg:text-sm"
-                >
-                  Ajouter produit
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Tableau de bord"
+          subtitle={`Vue d'ensemble de votre inventaire — ${new Date()?.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}`}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/qr-scanner')}
+                iconName="QrCode"
+                iconPosition="left"
+                className="text-xs lg:text-sm"
+              >
+                Scanner QR
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate('/products?action=add')}
+                iconName="Plus"
+                iconPosition="left"
+                className="text-xs lg:text-sm"
+              >
+                Ajouter produit
+              </Button>
+            </>
+          }
+        />
 
         {/* Enhanced Content with responsive spacing */}
         <div className="container-responsive py-4 sm:py-6 space-responsive-y">
