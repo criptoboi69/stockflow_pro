@@ -53,6 +53,7 @@ const Products = () => {
     mode: 'view', // 'view', 'edit', 'add'
     product: null
   });
+  const [openedFromNotification, setOpenedFromNotification] = useState(null); // Track product ID opened from notification
 
   const [qrModalState, setQrModalState] = useState({
     isOpen: false,
@@ -157,20 +158,27 @@ const Products = () => {
     // Support both 'product' and 'id' params (for notifications)
     const productId = searchParams?.get('product') || searchParams?.get('id');
     const modeFromUrl = searchParams?.get('mode');
-    if (!productId || !products?.length) return;
+    
+    // Wait for products to be loaded
+    if (!productId || !products || products.length === 0) return;
+    
+    // Prevent opening multiple times for same product
+    if (openedFromNotification === productId) return;
 
     const target = products.find((p) => p?.id === productId);
     if (!target) return;
 
     if (modeFromUrl === 'add-movement') {
       setMovementModalState({ isOpen: true, product: target });
+      setOpenedFromNotification(productId);
       return;
     }
 
     // Open in view mode by default (for notifications)
     const modalMode = modeFromUrl === 'edit' ? 'edit' : 'view';
     setModalState({ isOpen: true, mode: modalMode, product: target });
-  }, [searchParams, products]);
+    setOpenedFromNotification(productId);
+  }, [searchParams, products, openedFromNotification]);
 
   // Filter and sort products
   const filteredProducts = products?.filter((product) => {
@@ -387,6 +395,7 @@ const Products = () => {
       mode: 'view',
       product: null
     });
+    setOpenedFromNotification(null);
 
     const params = new URLSearchParams(searchParams);
     params.delete('product');
