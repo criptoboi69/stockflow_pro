@@ -54,6 +54,7 @@ export const useNotifications = () => {
           description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
           timestamp: m?.created_at || new Date().toISOString(),
           read: readIds.has(`movement_${m?.id}`),
+          navigateTo: `/stock-movements?id=${m?.id}`,
           metadata: {
             movementId: m?.id,
             productId: m?.product_id,
@@ -83,6 +84,7 @@ export const useNotifications = () => {
               description: `${p?.name} - ${p?.quantity || 0}/${p?.min_stock || 0}`,
               timestamp: p?.updated_at || p?.created_at || new Date().toISOString(),
               read: readIds.has(`alert_${p?.id}`),
+              navigateTo: `/products?id=${p?.id}`,
               metadata: {
                 productId: p?.id,
                 quantity: p?.quantity,

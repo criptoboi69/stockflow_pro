@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
@@ -19,7 +18,6 @@ const NotificationBell = ({
   const buttonSize = sizeClasses[size] || sizeClasses.md;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -144,6 +142,10 @@ const NotificationBell = ({
                         }
                         if (notification?.onClick) {
                           notification.onClick();
+                        }
+                        if (notification?.navigateTo) {
+                          // Use window.location for full page navigation
+                          window.location.href = notification.navigateTo;
                         }
                         setIsOpen(false);
                       }}
