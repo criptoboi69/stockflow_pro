@@ -11,12 +11,13 @@ const DataManagement = lazy(() => import("./pages/data-management"));
 const LoginPage = lazy(() => import("./pages/login"));
 const Products = lazy(() => import("./pages/products"));
 const ProductPhotoUpload = lazy(() => import("./pages/product-photo-upload"));
-const AdminConsole = lazy(() => import("./pages/admin-console"));
-const CompanyDetail = lazy(() => import("./pages/admin-console/company-detail"));
-const AdminCompanies = lazy(() => import("./pages/admin-console/companies"));
-const AdminOperations = lazy(() => import("./pages/admin-console/operations"));
-const AdminDataQuality = lazy(() => import("./pages/admin-console/data-quality"));
-const AdminActivity = lazy(() => import("./pages/admin-console/activity"));
+const AdminConsole = lazy(() => import("./pages/admin-console/index.jsx"));
+const AdminCompanies = lazy(() => import("./pages/admin-console/companies/CompaniesList.jsx"));
+const CompanyDetail = lazy(() => import("./pages/admin-console/companies/CompanyDetail.jsx"));
+const AdminUsers = lazy(() => import("./pages/admin-console/users/UserManagement.jsx"));
+const AdminOperations = lazy(() => import("./pages/admin-console/operations/OperationsQueue.jsx"));
+const AdminDataQuality = lazy(() => import("./pages/admin-console/data-quality/DataQualityChecks.jsx"));
+const AdminActivity = lazy(() => import("./pages/admin-console/activity/ActivityLog.jsx"));
 const QRScanner = lazy(() => import("./pages/qr-scanner"));
 const UserManagement = lazy(() => import("./pages/user-management"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
@@ -52,8 +53,9 @@ const Routes = () => {
             <Route path="/qr-scanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute roles={["super_admin", "administrator"]}><UserManagement /></ProtectedRoute>} />
             <Route path="/admin-console" element={<ProtectedRoute roles={["super_admin"]}><AdminConsole /></ProtectedRoute>} />
-            <Route path="/admin-console/company/:companyId" element={<ProtectedRoute roles={["super_admin"]}><CompanyDetail /></ProtectedRoute>} />
             <Route path="/admin-console/companies" element={<ProtectedRoute roles={["super_admin"]}><AdminCompanies /></ProtectedRoute>} />
+            <Route path="/admin-console/companies/:companyId" element={<ProtectedRoute roles={["super_admin"]}><CompanyDetail /></ProtectedRoute>} />
+            <Route path="/admin-console/users" element={<ProtectedRoute roles={["super_admin"]}><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin-console/operations" element={<ProtectedRoute roles={["super_admin"]}><AdminOperations /></ProtectedRoute>} />
             <Route path="/admin-console/data-quality" element={<ProtectedRoute roles={["super_admin"]}><AdminDataQuality /></ProtectedRoute>} />
             <Route path="/admin-console/activity" element={<ProtectedRoute roles={["super_admin"]}><AdminActivity /></ProtectedRoute>} />

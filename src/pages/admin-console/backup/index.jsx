@@ -105,7 +105,7 @@ const AdminConsole = () => {
       icon: 'Building2',
       title: 'Entreprises',
       description: 'Gérer les sociétés et leurs configurations',
-      badge: null
+      badge: stats.companies > 0 ? null : null
     },
     {
       to: '/admin-console/users',
@@ -190,7 +190,7 @@ const AdminConsole = () => {
             <StatCard
               icon="AlertTriangle"
               label="Alertes"
-              value={stats.alerts}
+              value={alerts.length}
               sub="Requièrent attention"
               color="error"
             />

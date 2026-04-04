@@ -73,6 +73,65 @@ class AdminConsoleService {
     return data || [];
   }
 
+  async getDashboardStats() {
+    const kpis = await this.getGlobalKPIs();
+    const companies = await this.getCompaniesOverview();
+    const alerts = await this.getAlerts();
+    
+    return {
+      companies: kpis.companies,
+      users: kpis.users,
+      activeOps: 0,
+      alerts: alerts.length
+    };
+  }
+
+  async getAlerts() {
+    const alerts = [];
+    const companies = await this.getCompaniesOverview();
+    
+    // Companies without admin
+    const companiesWithoutAdmin = companies.filter(c => c.admins === 0);
+    if (companiesWithoutAdmin.length > 0) {
+      alerts.push({
+        icon: 'Building2',
+        title: `${companiesWithoutAdmin.length} entreprise(s) sans administrateur`,
+        description: 'Configurez au moins un admin pour chaque société',
+        severity: 'warning'
+      });
+    }
+    
+    // Users inactive > 30 days
+    alerts.push({
+      icon: 'Users',
+      title: 'Utilisateurs inactifs',
+      description: 'Vérifiez les comptes sans activité depuis 30 jours',
+      severity: 'warning'
+    });
+    
+    return alerts;
+  }
+
+  async getAllUsers() {
+    const { data } = await supabase.from('user_profiles').select('id,email,full_name,phone,is_active,role,created_at');
+    return data || [];
+  }
+
+  async getAllUserCompanyRoles() {
+    const [rolesRes, companiesRes] = await Promise.all([
+      supabase.from('user_company_roles').select('user_id,company_id,role,is_active'),
+      supabase.from('companies').select('id,name')
+    ]);
+    
+    const roles = rolesRes.data || [];
+    const companies = companiesRes.data || [];
+    
+    return roles.map(r => ({
+      ...r,
+      company_name: companies.find(c => c.id === r.company_id)?.name
+    }));
+  }
+
   async getCompanyDetail(companyId) {
     const [companyRes, usersRes, productsRes, locationsRes, activityRes] = await Promise.all([
       supabase.from('companies').select('*').eq('id', companyId).single(),
