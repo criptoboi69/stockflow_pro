@@ -69,9 +69,52 @@ const dashboardVisibility = companySettings?.dashboardVisibility || {};
 
 ---
 
-## ⚠️ PROBLÈMES IDENTIFIÉS
+## ✅ CORRECTIONS APPLIQUÉES
 
-### 1. Graphique d'évolution — Placeholder
+### 1. ✅ Graphique d'évolution — IMPLÉMENTÉ
+**Statut:** ✅ Terminé (commit 601b1ce)
+
+**Implémentation:**
+```jsx
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+<ResponsiveContainer width="100%" height="100%">
+  <AreaChart data={chartData}>
+    <Area type="monotone" dataKey="quantity" stroke="#8884d8" fill="url(#colorQuantity)" />
+  </AreaChart>
+</ResponsiveContainer>
+```
+
+**Features:**
+- ✅ Données 7 derniers jours
+- ✅ Gradient fill (dégradé violet)
+- ✅ Tooltip personnalisé
+- ✅ Responsive (mobile/desktop)
+- ✅ Fallback si aucune donnée
+
+### 2. ✅ Memoization — IMPLÉMENTÉE
+**Statut:** ✅ Terminé (commit 601b1ce)
+
+```javascript
+// useMemo pour chartData
+const chartData = useMemo(() => {
+  // ... generation logic
+}, [products]);
+
+// useCallback pour handleKPIClick
+const handleKPIClick = useCallback((index) => {
+  // ... navigation logic
+}, [navigate]);
+```
+
+### 3. ✅ Activités réelles — IMPLÉMENTÉ
+**Statut:** ✅ Terminé (commit précédent)
+
+---
+
+## ⚠️ PROBLÈMES IDENTIFIÉS (HISTORIQUE)
+
+### 1. Graphique d'évolution — Placeholder [RÉSOLU]
 **Fichier:** `index.jsx` (lignes ~230-250)
 
 **État actuel:**
@@ -194,19 +237,19 @@ console.error('Error loading dashboard KPI:', error);
 
 | Item | Statut | Priorité |
 |------|--------|----------|
-| Graphique évolution (Recharts) | ❌ À faire | Moyenne |
-| Activités depuis stock_movements | ❌ À faire | Haute |
-| Memoization inventoryValue | ❌ À faire | Faible |
-| Currency depuis settings | ❌ À faire | Faible |
-| Navigation alertes stock | ❌ À faire | Moyenne |
-| Remplacer console.error par logger | ❌ À faire | Faible |
-| Tests manuels | ❌ À faire | Haute |
+| Graphique évolution (Recharts) | ✅ **FAIT** | Moyenne |
+| Activités depuis stock_movements | ✅ **FAIT** | Haute |
+| Memoization inventoryValue | ✅ **FAIT** | Faible |
+| Currency depuis settings | ✅ **FAIT** | Faible |
+| Navigation alertes stock | ✅ **FAIT** | Moyenne |
+| Remplacer console.error par logger | ✅ **FAIT** | Faible |
+| Tests manuels | ⏳ À faire | Haute |
 
 ---
 
-## 🔧 CORRECTIONS PRÉVUES
+## 🔧 CORRECTIONS PRÉVUES (HISTORIQUE)
 
-### Phase 1 — Activités réelles
+### Phase 1 — Activités réelles [RÉSOLU]
 ```javascript
 import stockMovementService from '../../services/stockMovementService';
 
