@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import productService from '../../services/productService';
 import categoryService from '../../services/categoryService';
 import stockMovementService from '../../services/stockMovementService';
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
 import useResponsive from '../../hooks/useResponsive';
-import useProducts from '../../hooks/useProducts';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import Button from '../../components/ui/Button';
 import QuickActionBar from '../../components/ui/QuickActionBar';
@@ -31,7 +31,8 @@ const Products = () => {
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('list');
-  const isLoading = productsLoading || authLoading;
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Filter State (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams?.get('search') || '');
@@ -64,28 +65,31 @@ const Products = () => {
     product: null
   });
 
-  // Use products hook for CRUD operations
-  const {
-    products,
-    loading: productsLoading,
-    error: productsError,
-    loadProducts,
-    saveProduct: saveProductFromHook,
-    deleteProduct: deleteProductFromHook,
-    findProduct
-  } = useProducts(currentCompany?.id);
-
+  // Products data from Supabase
+  const [products, setProducts] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([{ value: 'all', label: 'Toutes les catégories' }]);
+
   const effectiveRole = currentRole || 'user';
 
-  // Real-time subscription for products (updates hook state)
+  // Real-time subscription for products
   useRealtimeSubscription({
     table: 'products',
     filter: currentCompany?.id ? { column: 'company_id', value: currentCompany?.id } : null,
     enabled: !!currentCompany?.id,
-    onInsert: () => loadProducts(),
-    onUpdate: () => loadProducts(),
-    onDelete: () => loadProducts()
+    onInsert: (newProduct) => {
+      // Convert snake_case to camelCase and add to list
+      const camelCaseProduct = productService?.convertToCamelCase(newProduct);
+      setProducts(prev => [camelCaseProduct, ...prev]);
+    },
+    onUpdate: (updatedProduct) => {
+      // Convert and update in list
+      const camelCaseProduct = productService?.convertToCamelCase(updatedProduct);
+      setProducts(prev => prev?.map(p => p?.id === camelCaseProduct?.id ? camelCaseProduct : p));
+    },
+    onDelete: (deletedProduct) => {
+      // Remove from list
+      setProducts(prev => prev?.filter(p => p?.id !== deletedProduct?.id));
+    }
   });
 
   // Real-time subscription for stock movements (to update product quantities)
@@ -121,16 +125,25 @@ const Products = () => {
     loadCategories();
   }, [currentCompany]);
 
-  // Load products when company is ready
+  // Load products from Supabase
   useEffect(() => {
-    if (!authLoading && currentCompany?.id) {
-      loadProducts();
+    
+    if (authLoading) {
+      // Wait for auth to finish loading
+      return;
     }
-  }, [currentCompany?.id, authLoading, loadProducts]);
+    
+    if (currentCompany?.id) {
+      loadProducts();
+    } else {
+      // No company available, stop loading
+      setIsLoading(false);
+    }
+  }, [currentCompany, authLoading]);
 
   // Check if we need to open a product modal after loading
   useEffect(() => {
-    if (productsLoading || !products?.length) return;
+    if (isLoading || !products?.length) return;
     
     // Check localStorage first (for notifications)
     const storedProductId = localStorage.getItem('openProductModal');
@@ -138,17 +151,35 @@ const Products = () => {
     const productId = storedProductId || urlProductId;
     
     if (!productId) return;
+    
+    // Already opened
     if (openedFromNotification === productId) return;
     
-    const target = findProduct(productId);
+    const target = products.find((p) => p?.id === productId);
     if (!target) return;
     
+    // Open modal after a short delay to ensure UI is ready
     setTimeout(() => {
       setModalState({ isOpen: true, mode: 'view', product: target });
       setOpenedFromNotification(productId);
+      // Clear the localStorage flag
       localStorage.removeItem('openProductModal');
     }, 300);
-  }, [products, productsLoading, searchParams, openedFromNotification, findProduct]);
+  }, [products, isLoading, searchParams, openedFromNotification]);
+
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await productService?.getProducts(currentCompany?.id);
+      setProducts(data);
+    } catch (err) {
+      logger.error('[Products] Error loading products:', err);
+      setError('Erreur lors du chargement des produits');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Support both 'product' and 'id' params (for notifications)
@@ -338,24 +369,46 @@ const Products = () => {
   };
 
   const handleSaveProduct = async (productData) => {
-    const result = await saveProductFromHook(
-      productData,
-      modalState?.mode,
-      modalState?.product?.id
-    );
-    
-    if (result.success) {
+    try {
+      setIsLoading(true);
+      
+      if (modalState?.mode === 'add') {
+        const isUuid = (value) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
+
+        const safeUserId = isUuid(user?.id) ? user?.id : null;
+        console.log('[products] createProduct start');
+        await productService?.createProduct(productData, currentCompany?.id, safeUserId);
+        console.log('[products] createProduct done');
+      } else if (modalState?.mode === 'edit') {
+        console.log('[products] updateProduct start');
+        await productService?.updateProduct(modalState?.product?.id, productData);
+        console.log('[products] updateProduct done');
+      }
+      
+      console.log('[products] loadProducts start after save');
+      await loadProducts();
+      console.log('[products] loadProducts done after save');
       handleCloseModal();
-    } else {
-      setError(result.error?.message || 'Erreur lors de la sauvegarde du produit');
+    } catch (err) {
+      console.error('Error saving product:', err);
+      const backendMsg = err?.message || err?.error_description || err?.details;
+      setError(backendMsg ? `Erreur lors de la sauvegarde du produit: ${backendMsg}` : 'Erreur lors de la sauvegarde du produit');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDeleteProduct = async (productId, imageFilePath) => {
-    const result = await deleteProductFromHook(productId, imageFilePath);
-    
-    if (!result.success) {
-      setError(result.error?.message || 'Erreur lors de la suppression du produit');
+    try {
+      setIsLoading(true);
+      await productService?.deleteProduct(productId, imageFilePath);
+      await loadProducts();
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      setError('Erreur lors de la suppression du produit');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -384,9 +437,9 @@ const Products = () => {
         <div className="text-center">
           <Icon name="AlertCircle" size={48} className="text-warning mx-auto mb-4" />
           <p className="text-text-muted">
-            {isLoading ? 'Chargement...' : 'Aucune société associée à votre compte'}
+            {authLoading || isLoading ? 'Chargement...' : 'Aucune société associée à votre compte'}
           </p>
-          {!isLoading && (
+          {!authLoading && !isLoading && (
             <p className="text-text-muted text-sm mt-2">
               Veuillez contacter votre administrateur
             </p>
