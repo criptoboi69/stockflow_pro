@@ -159,16 +159,35 @@ const Products = () => {
     const productId = searchParams?.get('product') || searchParams?.get('id');
     const modeFromUrl = searchParams?.get('mode');
     
+    console.log('[Products] useEffect notification check:', {
+      productId,
+      modeFromUrl,
+      productsLoaded: products?.length || 0,
+      openedFromNotification,
+      willOpen: productId && products?.length > 0 && openedFromNotification !== productId
+    });
+    
     // Wait for products to be loaded
-    if (!productId || !products || products.length === 0) return;
+    if (!productId || !products || products.length === 0) {
+      console.log('[Products] Skipping: no productId or products not loaded');
+      return;
+    }
     
     // Prevent opening multiple times for same product
-    if (openedFromNotification === productId) return;
+    if (openedFromNotification === productId) {
+      console.log('[Products] Skipping: already opened this product');
+      return;
+    }
 
     const target = products.find((p) => p?.id === productId);
-    if (!target) return;
+    console.log('[Products] Found target:', target);
+    if (!target) {
+      console.log('[Products] Skipping: target not found in products list');
+      return;
+    }
 
     if (modeFromUrl === 'add-movement') {
+      console.log('[Products] Opening movement modal');
       setMovementModalState({ isOpen: true, product: target });
       setOpenedFromNotification(productId);
       return;
@@ -176,6 +195,7 @@ const Products = () => {
 
     // Open in view mode by default (for notifications)
     const modalMode = modeFromUrl === 'edit' ? 'edit' : 'view';
+    console.log('[Products] Opening product modal in', modalMode, 'mode');
     setModalState({ isOpen: true, mode: modalMode, product: target });
     setOpenedFromNotification(productId);
   }, [searchParams, products, openedFromNotification]);
