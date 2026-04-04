@@ -81,15 +81,50 @@ class StockMovementService {
    */
   async createStockMovement(movementData, companyId, userId) {
     try {
-      const snakeCaseData = this.convertToSnakeCase(movementData);
-      
+      const productId = movementData?.productId;
+      const quantityDelta = Number(movementData?.quantity || 0);
+
+      if (!productId) {
+        throw new Error('Produit manquant pour créer le mouvement');
+      }
+
+      const { data: existingProduct, error: productError } = await supabase
+        ?.from('products')
+        ?.select('id, quantity')
+        ?.eq('id', productId)
+        ?.single();
+
+      if (productError) throw productError;
+
+      const currentQuantity = Number(existingProduct?.quantity || 0);
+      const nextQuantity = currentQuantity + quantityDelta;
+
+      if (nextQuantity < 0) {
+        throw new Error('Stock insuffisant pour effectuer ce mouvement');
+      }
+
+      const normalizedMovementData = {
+        ...movementData,
+        previousQuantity: currentQuantity,
+        newQuantity: nextQuantity,
+        type: quantityDelta >= 0 ? 'in' : 'out',
+      };
+
+      const snakeCaseData = this.convertToSnakeCase(normalizedMovementData);
+
+      const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+      const insertPayload = {
+        ...snakeCaseData,
+        company_id: companyId,
+      };
+
+      if (isUuid(userId)) {
+        insertPayload.created_by = userId;
+      }
+
       const { data, error } = await supabase
         ?.from('stock_movements')
-        ?.insert({
-          ...snakeCaseData,
-          company_id: companyId,
-          created_by: userId
-        })
+        ?.insert(insertPayload)
         ?.select(`
           *,
           product:products(
@@ -107,6 +142,13 @@ class StockMovementService {
         ?.single();
 
       if (error) throw error;
+
+      const { error: updateProductError } = await supabase
+        ?.from('products')
+        ?.update({ quantity: nextQuantity })
+        ?.eq('id', productId);
+
+      if (updateProductError) throw updateProductError;
 
       return this.convertToCamelCase(data);
     } catch (error) {
@@ -218,9 +260,11 @@ class StockMovementService {
       id: movement?.id,
       companyId: movement?.company_id,
       productId: movement?.product_id,
-      type: movement?.type,
-      quantity: movement?.quantity,
-      runningBalance: movement?.running_balance,
+      type: movement?.type === 'in' ? 'receipt' : movement?.type === 'out' ? 'issue' : movement?.type,
+      quantity: Number(movement?.quantity),
+      previousQuantity: Number(movement?.previous_quantity),
+      newQuantity: Number(movement?.new_quantity),
+      runningBalance: Number(movement?.new_quantity),
       location: movement?.location,
       reason: movement?.reason,
       createdBy: movement?.created_by,
@@ -247,9 +291,10 @@ class StockMovementService {
     const snakeCase = {};
     
     if (movement?.productId !== undefined) snakeCase.product_id = movement?.productId;
-    if (movement?.type !== undefined) snakeCase.type = movement?.type;
-    if (movement?.quantity !== undefined) snakeCase.quantity = movement?.quantity;
-    if (movement?.runningBalance !== undefined) snakeCase.running_balance = movement?.runningBalance;
+    if (movement?.type !== undefined) snakeCase.type = movement?.type === 'receipt' ? 'in' : movement?.type === 'issue' ? 'out' : movement?.type;
+    if (movement?.quantity !== undefined) snakeCase.quantity = Number(movement?.quantity);
+    if (movement?.previousQuantity !== undefined) snakeCase.previous_quantity = Number(movement?.previousQuantity);
+    if (movement?.newQuantity !== undefined) snakeCase.new_quantity = Number(movement?.newQuantity);
     if (movement?.location !== undefined) snakeCase.location = movement?.location;
     if (movement?.reason !== undefined) snakeCase.reason = movement?.reason;
     

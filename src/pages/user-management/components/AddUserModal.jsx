@@ -5,12 +5,14 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { useAuth } from '../../../contexts/AuthContext';
 
-const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
-  const { currentRole, currentCompany } = useAuth();
+const AddUserModal = ({ isOpen, onClose, onAddUser, currentUserRole, currentCompany }) => {
+  // Using props passed from parent instead of useAuth
+
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    role: 'user',
+    role: 'employee',
     sendInvitation: true
   });
   const [errors, setErrors] = useState({});
@@ -18,33 +20,28 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
 
   const roleOptions = [
     { 
-      value: 'user', 
-      label: 'Utilisateur',
-      description: 'Consultation et création de mouvements de stock'
+      value: 'employee', 
+      label: 'Employé',
+      description: 'Accès de base aux fonctionnalités'
     },
-    ...(currentRole === 'manager' || currentRole === 'administrator' || currentRole === 'super_admin' ? [{
-      value: 'manager',
-      label: 'Gestionnaire',
-      description: 'Invitation utilisateurs, gestion produits et stocks'
-    }] : []),
-    ...(currentRole === 'administrator' || currentRole === 'super_admin' ? [{
-      value: 'administrator',
+    { 
+      value: 'manager', 
+      label: 'Manager',
+      description: 'Gestion des équipes et des opérations'
+    },
+    { 
+      value: 'admin', 
       label: 'Administrateur',
       description: 'Gestion complète de la société'
-    }] : []),
-    ...(currentRole === 'super_admin' ? [{
+    },
+    ...(currentUserRole === 'super_admin' ? [{
       value: 'super_admin',
       label: 'Super Admin',
       description: 'Accès complet au système'
     }] : [])
   ];
 
-  const companyOptions = [
-    { value: 'TechCorp Solutions', label: 'TechCorp Solutions' },
-    { value: 'InnovateLab', label: 'InnovateLab' },
-    { value: 'DataFlow Systems', label: 'DataFlow Systems' },
-    { value: 'CloudTech Enterprises', label: 'CloudTech Enterprises' }
-  ];
+
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -88,17 +85,11 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       
       const newUser = {
-        id: Date.now(),
-        name: formData?.name,
+        firstName: formData?.firstName,
+        lastName: formData?.lastName,
         email: formData?.email,
         role: formData?.role,
-        company: formData?.company,
-        status: 'pending',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData?.email}`,
-        avatarAlt: `Avatar généré pour ${formData?.name}`,
-        lastLogin: null,
-        createdAt: new Date()?.toISOString(),
-        invitationSent: formData?.sendInvitation
+        sendInvitation: formData?.sendInvitation
       };
 
       onAddUser(newUser);
@@ -112,10 +103,10 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
 
   const handleClose = () => {
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
-      role: 'user',
-      company: currentCompany,
+      role: 'employee',
       sendInvitation: true
     });
     setErrors({});
@@ -140,15 +131,26 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <Input
-            label="Nom complet"
-            type="text"
-            placeholder="Entrez le nom complet"
-            value={formData?.name}
-            onChange={(e) => handleInputChange('name', e?.target?.value)}
-            error={errors?.name}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Prénom"
+              type="text"
+              placeholder="Prénom"
+              value={formData?.firstName}
+              onChange={(e) => handleInputChange('firstName', e?.target?.value)}
+              error={errors?.firstName}
+              required
+            />
+            <Input
+              label="Nom"
+              type="text"
+              placeholder="Nom"
+              value={formData?.lastName}
+              onChange={(e) => handleInputChange('lastName', e?.target?.value)}
+              error={errors?.lastName}
+              required
+            />
+          </div>
 
           <Input
             label="Adresse email"
@@ -170,16 +172,7 @@ const AddUserModal = ({ isOpen, onClose, onAddUser }) => {
             required
           />
 
-          {currentRole === 'super_admin' && (
-            <Select
-              label="Société"
-              options={companyOptions}
-              value={formData?.company}
-              onChange={(value) => handleInputChange('company', value)}
-              error={errors?.company}
-              required
-            />
-          )}
+
 
           <div className="flex items-center space-x-3 p-4 bg-muted rounded-lg">
             <input

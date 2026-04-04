@@ -14,12 +14,15 @@ const ProductActions = ({
   totalPages,
   pageSize,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  userRole = 'user'
 }) => {
   const [bulkActionDropdownOpen, setBulkActionDropdownOpen] = useState(false);
 
+  const canExport = ['super_admin', 'administrator']?.includes(userRole);
+
   const bulkActions = [
-    { value: 'export', label: 'Exporter la sélection', icon: 'Download' },
+    ...(canExport ? [{ value: 'export', label: 'Exporter la sélection', icon: 'Download' }] : []),
     { value: 'delete', label: 'Supprimer la sélection', icon: 'Trash2', destructive: true },
     { value: 'update_category', label: 'Modifier la catégorie', icon: 'FolderTree' },
     { value: 'update_location', label: 'Modifier l\'emplacement', icon: 'MapPin' }
@@ -44,16 +47,6 @@ const ProductActions = ({
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 mb-6">
       {/* Left Section - Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-        {/* Add Product Button */}
-        <Button
-          variant="default"
-          onClick={onAddProduct}
-          className="w-full sm:w-auto"
-        >
-          <Icon name="Plus" size={16} className="mr-2" />
-          Ajouter un produit
-        </Button>
-
         {/* Bulk Actions */}
         {selectedProducts?.length > 0 && (
           <div className="relative">
@@ -101,25 +94,6 @@ const ProductActions = ({
           />
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex bg-muted rounded-lg p-1">
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('list')}
-            className="rounded-md"
-          >
-            <Icon name="List" size={16} />
-          </Button>
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('grid')}
-            className="rounded-md"
-          >
-            <Icon name="Grid3X3" size={16} />
-          </Button>
-        </div>
       </div>
       {/* Click outside handler for bulk actions dropdown */}
       {bulkActionDropdownOpen && (

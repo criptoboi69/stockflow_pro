@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import PageHeader from '../../components/ui/PageHeader';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import UserCard from './components/UserCard';
@@ -176,13 +177,15 @@ const UserManagement = () => {
         companyId: currentCompany?.id,
         role: userData?.role,
         invitedBy: profile?.id,
+        firstName: userData?.firstName,
+        lastName: userData?.lastName,
         companyName: currentCompany?.name,
-        inviterName: profile?.fullName
+        inviterName: profile?.fullName || profile?.email
       });
 
       if (error) throw error;
 
-      await loadInvitations();
+      await loadUsers();
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Error inviting user:', error);
@@ -191,17 +194,34 @@ const UserManagement = () => {
 
   const handleEditUser = async (userId, updates) => {
     try {
+      const { error } = await userService?.updateUser(userId, {
+        firstName: updates?.firstName,
+        lastName: updates?.lastName,
+        fullName: `${updates?.firstName || ''} ${updates?.lastName || ''}`.trim(),
+        phone: updates?.phone,
+        role: updates?.role
+      });
+      if (error) throw error;
+
       if (updates?.role) {
-        const { error } = await userService?.updateUserRole(userId, currentCompany?.id, updates?.role);
-        if (error) throw error;
+        const { error: roleError } = await userService?.updateUserRole(userId, currentCompany?.id, updates?.role);
+        if (roleError) throw roleError;
       }
 
       await loadUsers();
       setIsEditModalOpen(false);
       setSelectedUser(null);
+      return { ok: true };
     } catch (error) {
       console.error('Error updating user:', error);
+      throw error;
     }
+  };
+
+  // Open edit modal with user data
+  const openEditModal = (user) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
   };
 
   const handleUpdateUser = async (userData) => {
@@ -214,13 +234,22 @@ const UserManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (userId) => {
+  const handleToggleStatus = async (userId, isCurrentlyActive) => {
+    const confirmMessage = isCurrentlyActive
+      ? 'Confirmer la désactivation de cet utilisateur ?'
+      : "Confirmer l'activation de cet utilisateur ?";
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
     try {
       const { error } = await userService?.toggleUserStatus(userId);
       if (error) throw error;
       await loadUsers();
     } catch (error) {
       console.error('Error toggling user status:', error);
+      window.alert(error?.message || 'Erreur lors du changement de statut');
     }
   };
 
@@ -280,38 +309,11 @@ const UserManagement = () => {
       <div className={`transition-all duration-200 ${
         isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'} pt-16 lg:pt-0`
       }>
-        <div className="p-4 lg:p-6">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">Gestion des utilisateurs</h1>
-              <p className="text-text-muted mt-2 text-sm lg:text-base">
-                Gérez les comptes utilisateurs et leurs permissions
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <div className="flex items-center bg-muted rounded-lg p-1">
-                <Button
-                  variant={viewMode === 'table' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('table')}
-                  className="text-xs lg:text-sm"
-                >
-                  <Icon name="Table" size={16} className="mr-2" />
-                  Tableau
-                </Button>
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="text-xs lg:text-sm"
-                >
-                  <Icon name="Grid3X3" size={16} className="mr-2" />
-                  Grille
-                </Button>
-              </div>
-
+        <PageHeader
+          title="Gestion des utilisateurs"
+          subtitle="Gérez les comptes utilisateurs et leurs permissions"
+          actions={
+            <>
               {(['super_admin', 'administrator']?.includes(currentRole)) && (
                 <Button
                   variant="default"
@@ -324,8 +326,11 @@ const UserManagement = () => {
                   Ajouter un utilisateur
                 </Button>
               )}
-            </div>
-          </div>
+            </>
+          }
+        />
+
+        <div className="p-4 lg:p-6">
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
@@ -389,7 +394,8 @@ const UserManagement = () => {
             filters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
-            currentUserRole={currentRole} 
+            currentUserRole={currentRole}
+            resultCount={filteredUsers?.length} 
           />
 
           {/* Bulk Actions */}
@@ -407,7 +413,7 @@ const UserManagement = () => {
               selectedUsers={selectedUsers}
               onSelectUser={handleSelectUser}
               onSelectAll={handleSelectAll}
-              onEdit={handleEditUser}
+              onEdit={openEditModal}
               onToggleStatus={handleToggleStatus}
               onViewDetails={handleViewDetails}
               currentUserRole={currentRole}
@@ -421,7 +427,7 @@ const UserManagement = () => {
                 <UserCard
                   key={user?.id}
                   user={user}
-                  onEdit={handleEditUser}
+                  onEdit={openEditModal}
                   onToggleStatus={handleToggleStatus}
                   onViewDetails={handleViewDetails}
                   currentUserRole={currentRole} 

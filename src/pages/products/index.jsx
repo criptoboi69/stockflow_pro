@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import productService from '../../services/productService';
+import categoryService from '../../services/categoryService';
+import stockMovementService from '../../services/stockMovementService';
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
+import useResponsive from '../../hooks/useResponsive';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
+import Button from '../../components/ui/Button';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import ProductFilters from './components/ProductFilters';
 import ProductActions from './components/ProductActions';
@@ -11,17 +15,21 @@ import ProductTable from './components/ProductTable';
 import ProductCard from './components/ProductCard';
 import ProductPagination from './components/ProductPagination';
 import ProductModal from './components/ProductModal';
+import QRCodeGenerator from './components/QRCodeGenerator';
+import NewMovementModal from '../stock-movements/components/NewMovementModal';
 import Icon from '../../components/AppIcon';
+import PageHeader from '../../components/ui/PageHeader';
 
 const Products = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const authContext = useAuth();
-  const { currentCompany, currentRole, loading: authLoading } = authContext || {};
+  const { user, currentCompany, currentRole, loading: authLoading } = authContext || {};
+  const { isMobile, isDesktop } = useResponsive();
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState(window.innerWidth < 768 ? 'grid' : 'list');
+  const [viewMode, setViewMode] = useState('list');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -46,8 +54,18 @@ const Products = () => {
     product: null
   });
 
+  const [qrModalState, setQrModalState] = useState({
+    isOpen: false,
+    product: null
+  });
+  const [movementModalState, setMovementModalState] = useState({
+    isOpen: false,
+    product: null
+  });
+
   // Products data from Supabase
   const [products, setProducts] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([{ value: 'all', label: 'Toutes les catégories' }]);
 
   const effectiveRole = currentRole || 'user';
 
@@ -83,6 +101,28 @@ const Products = () => {
     }
   });
 
+  useEffect(() => {
+    const loadCategories = async () => {
+      if (!currentCompany?.id) {
+        setCategoryOptions([{ value: 'all', label: 'Toutes les catégories' }]);
+        return;
+      }
+
+      try {
+        const categories = await categoryService.getCategories(currentCompany.id);
+        setCategoryOptions([
+          { value: 'all', label: 'Toutes les catégories' },
+          ...(categories || []).map((category) => ({ value: category.name, label: category.name })),
+        ]);
+      } catch (error) {
+        console.error('[Products] Error loading categories:', error);
+        setCategoryOptions([{ value: 'all', label: 'Toutes les catégories' }]);
+      }
+    };
+
+    loadCategories();
+  }, [currentCompany]);
+
   // Load products from Supabase
   useEffect(() => {
     
@@ -112,6 +152,23 @@ const Products = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const productId = searchParams?.get('product');
+    const modeFromUrl = searchParams?.get('mode');
+    if (!productId || !products?.length) return;
+
+    const target = products.find((p) => p?.id === productId);
+    if (!target) return;
+
+    if (modeFromUrl === 'add-movement') {
+      setMovementModalState({ isOpen: true, product: target });
+      return;
+    }
+
+    const modalMode = modeFromUrl === 'edit' ? 'edit' : 'view';
+    setModalState({ isOpen: true, mode: modalMode, product: target });
+  }, [searchParams, products]);
 
   // Filter and sort products
   const filteredProducts = products?.filter((product) => {
@@ -153,20 +210,17 @@ const Products = () => {
     if (currentPage > 1) params?.set('page', currentPage?.toString());
     if (pageSize !== 25) params?.set('pageSize', pageSize?.toString());
 
+    const linkedProduct = searchParams?.get('product');
+    const linkedMode = searchParams?.get('mode');
+    const linkedQr = searchParams?.get('qr');
+    if (linkedProduct) params.set('product', linkedProduct);
+    if (linkedMode) params.set('mode', linkedMode);
+    if (linkedQr) params.set('qr', linkedQr);
+
     setSearchParams(params);
-  }, [searchQuery, selectedStatus, selectedCategory, currentPage, pageSize, setSearchParams]);
+  }, [searchQuery, selectedStatus, selectedCategory, currentPage, pageSize, setSearchParams, searchParams]);
 
-  // Enhanced responsive view mode handling
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768 && viewMode === 'list') {
-        setViewMode('grid');
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [viewMode]);
+  // Keep user-selected view mode on mobile too.
 
   // Event Handlers
   const handleClearFilters = () => {
@@ -205,6 +259,10 @@ const Products = () => {
   };
 
   const handleBulkAction = (action, productIds) => {
+    if (action === 'export' && !['super_admin', 'administrator']?.includes(effectiveRole)) {
+      setError('Accès refusé: export réservé aux administrateurs');
+      return;
+    }
     // Implement bulk actions here
     setSelectedProducts([]);
   };
@@ -234,36 +292,81 @@ const Products = () => {
   };
 
   const handleGenerateQR = (product) => {
-    navigate(`/qr-scanner?product=${product?.id}`);
+    setQrModalState({
+      isOpen: true,
+      product
+    });
+  };
+
+  const handlePersistQRCode = async (qrData) => {
+    try {
+      if (!qrModalState?.product?.id) return;
+      await productService?.updateProduct(qrModalState.product.id, { qrCode: qrData });
+      await loadProducts();
+      setQrModalState((prev) => ({ ...prev, product: { ...prev.product, qrCode: qrData } }));
+    } catch (err) {
+      console.error('Error saving QR code:', err);
+      const backendMsg = err?.message || err?.error_description || err?.details;
+      setError(backendMsg ? `Erreur lors de l'enregistrement du QR code: ${backendMsg}` : "Erreur lors de l'enregistrement du QR code");
+      throw err;
+    }
   };
 
   const handleStockMovement = (product) => {
-    navigate(`/stock-movements?product=${product?.id}&action=add`);
+    setMovementModalState({ isOpen: true, product });
+  };
+
+  const handleSaveMovement = async (movementData) => {
+    try {
+      await stockMovementService?.createStockMovement(movementData, currentCompany?.id, user?.id);
+      setMovementModalState({ isOpen: false, product: null });
+      await loadProducts();
+    } catch (err) {
+      console.error('Error creating movement from products page:', err);
+      const backendMsg = err?.message || err?.error_description || err?.details;
+      setError(backendMsg ? `Erreur lors de la création du mouvement: ${backendMsg}` : 'Erreur lors de la création du mouvement');
+      throw err;
+    }
   };
 
   const handleSaveProduct = async (productData) => {
     try {
+      console.log('[products] handleSaveProduct start', {
+        mode: modalState?.mode,
+        productId: modalState?.product?.id,
+        imageUrls: productData?.imageUrls?.length || 0,
+        imageFilePaths: productData?.imageFilePaths?.length || 0
+      });
       setIsLoading(true);
       
       if (modalState?.mode === 'add') {
-        await productService?.createProduct(productData, currentCompany?.id, user?.id);
+        const isUuid = (value) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
+
+        const safeUserId = isUuid(user?.id) ? user?.id : null;
+        console.log('[products] createProduct start');
+        await productService?.createProduct(productData, currentCompany?.id, safeUserId);
+        console.log('[products] createProduct done');
       } else if (modalState?.mode === 'edit') {
+        console.log('[products] updateProduct start');
         await productService?.updateProduct(modalState?.product?.id, productData);
+        console.log('[products] updateProduct done');
       }
       
+      console.log('[products] loadProducts start after save');
       await loadProducts();
-      setModalState({ isOpen: false, mode: 'view', product: null });
+      console.log('[products] loadProducts done after save');
+      handleCloseModal();
     } catch (err) {
       console.error('Error saving product:', err);
-      setError('Erreur lors de la sauvegarde du produit');
+      const backendMsg = err?.message || err?.error_description || err?.details;
+      setError(backendMsg ? `Erreur lors de la sauvegarde du produit: ${backendMsg}` : 'Erreur lors de la sauvegarde du produit');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDeleteProduct = async (productId, imageFilePath) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
-    
     try {
       setIsLoading(true);
       await productService?.deleteProduct(productId, imageFilePath);
@@ -282,6 +385,16 @@ const Products = () => {
       mode: 'view',
       product: null
     });
+
+    const params = new URLSearchParams(searchParams);
+    params.delete('product');
+    params.delete('mode');
+    params.delete('qr');
+    setSearchParams(params);
+  };
+
+  const handleCloseMovementModal = () => {
+    setMovementModalState({ isOpen: false, product: null });
   };
 
   if (!currentCompany) {
@@ -333,25 +446,33 @@ const Products = () => {
         {/* Mobile Header Spacer with responsive height */}
         <div className="h-14 sm:h-16 lg:hidden" />
 
-        {/* Enhanced Page Header with responsive design */}
-        <div className="bg-surface border-b border-border">
-          <div className="container-responsive py-4 sm:py-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Gestion des Produits</h1>
-                <p className="text-text-muted mt-1 text-sm sm:text-base">
-                  Gérez votre catalogue de produits et suivez les niveaux de stock
-                </p>
-              </div>
-              
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <QuickActionBar
-                  variant="header"
-                  userRole={effectiveRole} />
-              </div>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Produits"
+          subtitle="Gérez votre catalogue de produits et suivez les niveaux de stock"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/qr-scanner')}
+                iconName="QrCode"
+                iconPosition="left"
+                className="text-xs lg:text-sm"
+              >
+                Scanner QR
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAddProduct}
+                iconName="Plus"
+                iconPosition="left"
+                className="text-xs lg:text-sm"
+              >
+                Ajouter produit
+              </Button>
+            </>
+          }
+        />
 
         {/* Enhanced Content with responsive container */}
         <div className="container-responsive py-4 sm:py-6">
@@ -365,7 +486,10 @@ const Products = () => {
             onCategoryChange={setSelectedCategory}
             onClearFilters={handleClearFilters}
             resultCount={totalProducts}
-            isLoading={isLoading} />
+            isLoading={isLoading}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            categoryOptions={categoryOptions} />
 
           {/* Enhanced Actions with responsive layout */}
           <ProductActions
@@ -379,22 +503,25 @@ const Products = () => {
             totalPages={totalPages}
             pageSize={pageSize}
             onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange} />
+            onPageSizeChange={handlePageSizeChange}
+            userRole={effectiveRole} />
 
           {/* Enhanced Products Display with responsive grid */}
-          {viewMode === 'list' && window.innerWidth >= 768 ? (
-            <ProductTable
-              products={paginatedProducts}
-              selectedProducts={selectedProducts}
-              onSelectProduct={handleSelectProduct}
-              onSelectAll={handleSelectAll}
-              onEdit={handleEditProduct}
-              onView={handleViewProduct}
-              onGenerateQR={handleGenerateQR}
-              onStockMovement={handleStockMovement}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort} />
+          {viewMode === 'list' ? (
+            <div className="overflow-x-auto">
+              <ProductTable
+                products={paginatedProducts}
+                selectedProducts={selectedProducts}
+                onSelectProduct={handleSelectProduct}
+                onSelectAll={handleSelectAll}
+                onEdit={handleEditProduct}
+                onView={handleViewProduct}
+                onGenerateQR={handleGenerateQR}
+                onStockMovement={handleStockMovement}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort} />
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {paginatedProducts?.map((product) => (
@@ -419,17 +546,11 @@ const Products = () => {
               <p className="text-text-muted mb-4 sm:mb-6 text-sm sm:text-base max-w-md mx-auto">
                 Essayez de modifier vos critères de recherche ou ajoutez un nouveau produit.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <div className="flex items-center justify-center">
                 <button
                   onClick={handleClearFilters}
                   className="text-primary hover:text-primary/80 font-medium touch-target text-sm sm:text-base">
                   Effacer les filtres
-                </button>
-                <span className="text-text-muted hidden sm:inline">ou</span>
-                <button
-                  onClick={handleAddProduct}
-                  className="text-primary hover:text-primary/80 font-medium touch-target text-sm sm:text-base">
-                  Ajouter un produit
                 </button>
               </div>
             </div>
@@ -456,7 +577,25 @@ const Products = () => {
         onClose={handleCloseModal}
         product={modalState?.product}
         mode={modalState?.mode}
-        onSave={handleSaveProduct} />
+        onSave={handleSaveProduct}
+        onDelete={handleDeleteProduct}
+        canDelete={['super_admin', 'administrator']?.includes(effectiveRole)} />
+
+      {/* QR Modal: show/print product QR code directly from product list */}
+      <QRCodeGenerator
+        isOpen={qrModalState?.isOpen}
+        onClose={() => setQrModalState({ isOpen: false, product: null })}
+        product={qrModalState?.product}
+        onGenerate={handlePersistQRCode}
+      />
+
+      <NewMovementModal
+        isOpen={movementModalState?.isOpen}
+        onClose={handleCloseMovementModal}
+        onSave={handleSaveMovement}
+        userRole={effectiveRole}
+        initialProduct={movementModalState?.product}
+      />
     </div>
   );
 };

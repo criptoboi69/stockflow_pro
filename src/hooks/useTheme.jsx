@@ -82,6 +82,7 @@ export const useThemeProvider = () => {
       };
       
       localStorage.setItem('userPreferences', JSON.stringify(updatedPreferences));
+      window.dispatchEvent(new CustomEvent('userPreferencesChanged', { detail: updatedPreferences }));
     } catch (error) {
       console.error('Error saving theme preference:', error);
     }

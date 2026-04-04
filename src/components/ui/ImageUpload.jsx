@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Icon from '../AppIcon';
 import Image from '../AppImage';
@@ -8,13 +8,18 @@ const ImageUpload = ({
   onUpload, 
   currentImage = null, 
   onRemove,
-  maxSize = 5242880, // 5MB default
+  maxSize = 20971520, // 20MB default
   accept = { 'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.gif'] },
-  disabled = false 
+  disabled = false,
+  capture = 'environment'
 }) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentImage);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setPreview(currentImage || null);
+  }, [currentImage]);
 
   const onDrop = useCallback(async (acceptedFiles, rejectedFiles) => {
     setError(null);
@@ -111,7 +116,7 @@ const ImageUpload = ({
             }
           `}
         >
-          <input {...getInputProps()} />
+          <input {...getInputProps({ capture })} />
           
           <div className="flex flex-col items-center space-y-3">
             <div className={`p-3 rounded-full ${

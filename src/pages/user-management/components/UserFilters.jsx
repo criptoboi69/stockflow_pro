@@ -1,14 +1,13 @@
 import React from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
+import FilterDropdown from '../../../components/ui/FilterDropdown';
+import ListFilterBar from '../../../components/ui/ListFilterBar';
 
 const UserFilters = ({ 
   filters, 
   onFilterChange, 
   onClearFilters,
-  currentUserRole 
+  currentUserRole,
+  resultCount = 0,
 }) => {
   const roleOptions = [
     { value: '', label: 'Tous les rôles' },
@@ -36,67 +35,58 @@ const UserFilters = ({
 
   const hasActiveFilters = Object.values(filters)?.some(value => value !== '');
 
+  const activeChips = [
+    ...(filters?.search ? [{ key: 'search', label: filters.search, icon: 'Search', variant: 'primary', onRemove: () => onFilterChange('search', '') }] : []),
+    ...(filters?.role ? [{ key: 'role', label: `Rôle : ${roleOptions.find((option) => option.value === filters.role)?.label || filters.role}`, onRemove: () => onFilterChange('role', '') }] : []),
+    ...(filters?.status ? [{ key: 'status', label: `Statut : ${statusOptions.find((option) => option.value === filters.status)?.label || filters.status}`, onRemove: () => onFilterChange('status', '') }] : []),
+    ...(filters?.company ? [{ key: 'company', label: `Société : ${filters.company}`, onRemove: () => onFilterChange('company', '') }] : []),
+  ];
+
   return (
-    <div className="bg-card border border-border rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-text-primary flex items-center">
-          <Icon name="Filter" size={20} className="mr-2" />
-          Filtres
-        </h3>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearFilters}
-            className="text-text-secondary hover:text-text-primary"
-          >
-            <Icon name="X" size={16} className="mr-2" />
-            Effacer les filtres
-          </Button>
-        )}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Input
-          type="search"
-          placeholder="Rechercher par nom ou email..."
-          value={filters?.search}
-          onChange={(e) => onFilterChange('search', e?.target?.value)}
-        />
-
-        <Select
-          placeholder="Filtrer par rôle"
-          options={roleOptions}
-          value={filters?.role}
-          onChange={(value) => onFilterChange('role', value)}
-        />
-
-        <Select
-          placeholder="Filtrer par statut"
-          options={statusOptions}
-          value={filters?.status}
-          onChange={(value) => onFilterChange('status', value)}
-        />
-
-        {currentUserRole === 'SUPER_ADMIN' && (
-          <Select
-            placeholder="Filtrer par société"
-            options={companyOptions}
-            value={filters?.company}
-            onChange={(value) => onFilterChange('company', value)}
+    <ListFilterBar
+      search={filters?.search}
+      onSearchChange={(value) => onFilterChange('search', value)}
+      searchPlaceholder="Rechercher par nom ou email..."
+      filters={
+        <>
+          <FilterDropdown
+            label="Rôle"
+            options={roleOptions.filter((option) => option.value !== '')}
+            value={filters?.role}
+            onChange={(value) => onFilterChange('role', value || '')}
+            placeholder="Filtrer par rôle"
+            buttonIcon="Shield"
+            className="w-full md:min-w-[180px] md:w-auto"
           />
-        )}
-      </div>
-      {hasActiveFilters && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <div className="flex items-center space-x-2 text-sm text-text-muted">
-            <Icon name="Info" size={16} />
-            <span>
-              Filtres actifs: {Object.entries(filters)?.filter(([_, value]) => value !== '')?.length}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+
+          <FilterDropdown
+            label="Statut"
+            options={statusOptions.filter((option) => option.value !== '')}
+            value={filters?.status}
+            onChange={(value) => onFilterChange('status', value || '')}
+            placeholder="Filtrer par statut"
+            buttonIcon="BadgeCheck"
+            className="w-full md:min-w-[180px] md:w-auto"
+          />
+
+          {currentUserRole === 'SUPER_ADMIN' && (
+            <FilterDropdown
+              label="Société"
+              options={companyOptions.filter((option) => option.value !== '')}
+              value={filters?.company}
+              onChange={(value) => onFilterChange('company', value || '')}
+              placeholder="Filtrer par société"
+              buttonIcon="Building2"
+              className="w-full md:min-w-[220px] md:w-auto"
+            />
+          )}
+        </>
+      }
+      onReset={hasActiveFilters ? onClearFilters : null}
+      resultLabel={`${resultCount} utilisateur${resultCount > 1 ? 's' : ''}`}
+      activeChips={activeChips}
+      className="mb-6"
+    />
   );
 };
 

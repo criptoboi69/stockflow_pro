@@ -101,7 +101,7 @@ const MovementEditModal = ({ isOpen, onClose, movement, onSave, userRole }) => {
   if (!isOpen) return null;
 
   // Check permissions
-  const canEdit = ['super_admin', 'administrator']?.includes(userRole);
+  const canEdit = ['super_admin', 'administrator', 'manager', 'user']?.includes(userRole);
   if (!canEdit) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

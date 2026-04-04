@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [currentLanguage, setCurrentLanguage] = useState(
     localStorage.getItem('currentLanguage') || 'fr'
   );
@@ -80,13 +81,33 @@ const ResetPasswordPage = () => {
     // Check if user has a valid recovery token
     const checkRecoveryToken = async () => {
       try {
-        const { data: { session }, error } = await supabase?.auth?.getSession();
+        // First, check for token in URL query params
+        const token = searchParams.get('token');
+        const type = searchParams.get('type');
         
-        if (error || !session) {
-          setValidToken(false);
-          setError(t?.invalidToken);
+        if (token && type === 'recovery') {
+          // Set the token manually in supabase
+          const { error } = await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: ''
+          });
+          
+          if (!error) {
+            setValidToken(true);
+          } else {
+            setValidToken(false);
+            setError(t?.invalidToken || 'Token invalide');
+          }
         } else {
-          setValidToken(true);
+          // Fall back to checking session
+          const { data: { session }, error } = await supabase?.auth?.getSession();
+          
+          if (error || !session) {
+            setValidToken(false);
+            setError(t?.invalidToken);
+          } else {
+            setValidToken(true);
+          }
         }
       } catch (err) {
         console.error('Token validation error:', err);
@@ -98,7 +119,7 @@ const ResetPasswordPage = () => {
     };
 
     checkRecoveryToken();
-  }, []);
+  }, [searchParams]);
 
   const validatePassword = (password) => {
     if (password?.length < 8) return false;

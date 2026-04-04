@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
@@ -9,7 +10,7 @@ const CameraView = ({
   currentLanguage = 'fr' 
 }) => {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const codeReaderRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [hasPermission, setHasPermission] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,46 +56,73 @@ const CameraView = ({
   const startCamera = async () => {
     setIsLoading(true);
     try {
-      const mediaStream = await navigator.mediaDevices?.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      if (!videoRef?.current) throw new Error('Video element not ready');
 
-      setStream(mediaStream);
-      setHasPermission(true);
-      
-      if (videoRef?.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef?.current?.play();
+      if (!codeReaderRef.current) {
+        codeReaderRef.current = new BrowserMultiFormatReader();
       }
+
+      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+      if (!devices?.length) {
+        throw new Error(t?.noCamera);
+      }
+
+      const preferredDevice =
+        devices.find(d => /back|rear|environment/i.test(d.label || '')) || devices[0];
+
+      setHasPermission(true);
+      setScanningActive(true);
+
+      const controls = await codeReaderRef.current.decodeFromVideoDevice(
+        preferredDevice.deviceId,
+        videoRef.current,
+        (result, error) => {
+          if (result) {
+            const text = result.getText?.() || '';
+            if (text) {
+              onScanSuccess(text);
+              controls.stop();
+              setScanningActive(false);
+              setStream(null);
+            }
+          }
+
+          if (error && error?.name !== 'NotFoundException') {
+            console.error('QR scan error:', error);
+          }
+        }
+      );
+
+      setStream(controls);
     } catch (error) {
       console.error('Camera access error:', error);
       setHasPermission(false);
-      onError(error?.name === 'NotAllowedError' ? t?.permissionDenied : t?.noCamera);
+      setScanningActive(false);
+      onError(error?.name === 'NotAllowedError' ? t?.permissionDenied : (error?.message || t?.noCamera));
     } finally {
       setIsLoading(false);
     }
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream?.getTracks()?.forEach(track => track?.stop());
-      setStream(null);
+    try {
+      if (stream?.stop) {
+        stream.stop();
+      }
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+      }
+    } catch (e) {
+      console.error('Error stopping scanner:', e);
     }
-    setScanningActive(false);
-  };
 
-  const simulateQRScan = () => {
-    // Simulate QR code detection after 2-3 seconds
-    setScanningActive(true);
-    setTimeout(() => {
-      const mockQRCode = "PRD-2024-001";
-      onScanSuccess(mockQRCode);
-      setScanningActive(false);
-    }, 2500);
+    const src = videoRef?.current?.srcObject;
+    if (src?.getTracks) {
+      src.getTracks().forEach(track => track.stop());
+    }
+
+    setStream(null);
+    setScanningActive(false);
   };
 
   if (hasPermission === false) {
@@ -125,13 +153,7 @@ const CameraView = ({
           muted
         />
         
-        {/* Canvas for QR detection (hidden) */}
-        <canvas
-          ref={canvasRef}
-          className="hidden"
-          width="640"
-          height="480"
-        />
+
 
         {/* Scanning Overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -183,24 +205,13 @@ const CameraView = ({
             {t?.startScanning}
           </Button>
         ) : (
-          <>
-            <Button 
-              onClick={simulateQRScan} 
-              disabled={scanningActive}
-              variant={scanningActive ? "secondary" : "default"}
-              className="px-8"
-            >
-              <Icon name="QrCode" size={20} className="mr-2" />
-              {scanningActive ? t?.scanningInProgress : "Scan QR"}
-            </Button>
-            <Button 
-              onClick={stopCamera} 
-              variant="outline"
-            >
-              <Icon name="Square" size={20} className="mr-2" />
-              {t?.stopScanning}
-            </Button>
-          </>
+          <Button 
+            onClick={stopCamera} 
+            variant="outline"
+          >
+            <Icon name="Square" size={20} className="mr-2" />
+            {t?.stopScanning}
+          </Button>
         )}
       </div>
     </div>

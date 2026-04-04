@@ -50,11 +50,15 @@ class ProductService {
     try {
       const snakeCaseData = this.convertToSnakeCase(productData);
       
-      const { data, error } = await supabase?.from('products')?.insert({
-          ...snakeCaseData,
-          company_id: companyId,
-          created_by: userId
-        })?.select()?.single();
+      const payload = {
+        ...snakeCaseData,
+        company_id: companyId
+      };
+
+      // IMPORTANT: created_by removed for compatibility with demo/auth-mixed sessions
+      // (some sessions expose non-UUID IDs like "demo-user").
+
+      const { data, error } = await supabase?.from('products')?.insert(payload)?.select()?.single();
 
       if (error) throw error;
 
@@ -74,6 +78,12 @@ class ProductService {
   async updateProduct(productId, productData) {
     try {
       const snakeCaseData = this.convertToSnakeCase(productData);
+      console.log('[productService] updateProduct payload', {
+        productId,
+        keys: Object.keys(snakeCaseData || {}),
+        image_urls: snakeCaseData?.image_urls?.length || 0,
+        image_file_paths: snakeCaseData?.image_file_paths?.length || 0
+      });
       
       const { data, error } = await supabase?.from('products')?.update(snakeCaseData)?.eq('id', productId)?.select()?.single();
 
@@ -158,6 +168,32 @@ class ProductService {
   }
 
   /**
+   * Get product stats for dashboard
+   * @param {string} companyId - Company UUID
+   * @returns {Promise<{totalProducts:number,totalQuantity:number,lowStockCount:number}>}
+   */
+  async getProductStats(companyId) {
+    try {
+      const { data, error } = await supabase
+        ?.from('products')
+        ?.select('quantity,min_stock')
+        ?.eq('company_id', companyId);
+
+      if (error) throw error;
+
+      const rows = data || [];
+      const totalProducts = rows.length;
+      const totalQuantity = rows.reduce((sum, p) => sum + Number(p?.quantity || 0), 0);
+      const lowStockCount = rows.filter((p) => Number(p?.quantity || 0) <= Number(p?.min_stock || 0)).length;
+
+      return { totalProducts, totalQuantity, lowStockCount };
+    } catch (error) {
+      console.error('Error fetching product stats:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Convert database snake_case to React camelCase
    */
   convertToCamelCase(product) {
@@ -170,13 +206,16 @@ class ProductService {
       sku: product?.sku,
       description: product?.description,
       category: product?.category,
-      location: product?.location,
+      location: product?.product_location,
       quantity: product?.quantity,
       price: product?.price,
       minStock: product?.min_stock,
       imageUrl: product?.image_url,
       imageFilePath: product?.image_file_path,
+      imageUrls: Array.isArray(product?.image_urls) ? product?.image_urls : (product?.image_url ? [product?.image_url] : []),
+      imageFilePaths: Array.isArray(product?.image_file_paths) ? product?.image_file_paths : (product?.image_file_path ? [product?.image_file_path] : []),
       status: product?.status,
+      qrCode: product?.qr_code,
       createdBy: product?.created_by,
       createdAt: product?.created_at,
       updatedAt: product?.updated_at
@@ -193,12 +232,30 @@ class ProductService {
     if (product?.sku !== undefined) snakeCase.sku = product?.sku;
     if (product?.description !== undefined) snakeCase.description = product?.description;
     if (product?.category !== undefined) snakeCase.category = product?.category;
-    if (product?.location !== undefined) snakeCase.location = product?.location;
-    if (product?.quantity !== undefined) snakeCase.quantity = product?.quantity;
-    if (product?.price !== undefined) snakeCase.price = product?.price;
-    if (product?.minStock !== undefined) snakeCase.min_stock = product?.minStock;
+    if (product?.location !== undefined) snakeCase.product_location = product?.location;
+    if (product?.quantity !== undefined) {
+      const q = Number(product?.quantity);
+      snakeCase.quantity = Number.isFinite(q) ? q : 0;
+    }
+
+    if (product?.price !== undefined) {
+      if (product?.price === '' || product?.price === null) {
+        snakeCase.price = null;
+      } else {
+        const p = Number(product?.price);
+        snakeCase.price = Number.isFinite(p) ? p : null;
+      }
+    }
+
+    if (product?.minStock !== undefined) {
+      const ms = Number(product?.minStock);
+      snakeCase.min_stock = Number.isFinite(ms) ? ms : 0;
+    }
     if (product?.imageUrl !== undefined) snakeCase.image_url = product?.imageUrl;
     if (product?.imageFilePath !== undefined) snakeCase.image_file_path = product?.imageFilePath;
+    if (product?.imageUrls !== undefined) snakeCase.image_urls = product?.imageUrls;
+    if (product?.imageFilePaths !== undefined) snakeCase.image_file_paths = product?.imageFilePaths;
+    if (product?.qrCode !== undefined) snakeCase.qr_code = product?.qrCode;
     
     return snakeCase;
   }

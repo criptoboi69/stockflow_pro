@@ -1,47 +1,19 @@
-import { useState, useEffect } from 'react';
+import useCompanySettings from './useCompanySettings';
 
 const useSettings = () => {
-  const [settings, setSettings] = useState({
-    timezone: 'Europe/Brussels',
-    dashboardVisibility: {
-      totalProducts: true,
-      stockAlerts: true,
-      recentMovements: true,
-      lowStockItems: true
-    },
-    digestTiming: '08:00',
-    digestFrequency: 'daily',
-    dateFormat: 'DD/MM/YYYY',
-    numberFormat: 'european',
-    defaultLanguage: 'fr',
-    showPrices: true  // New price display setting
-  });
+  const { settings, loading, reloadSettings } = useCompanySettings();
 
-  useEffect(() => {
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem('generalSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-  }, []);
-
-  const updateSettings = (newSettings) => {
-    const updatedSettings = { ...settings, ...newSettings };
-    setSettings(updatedSettings);
-    localStorage.setItem('generalSettings', JSON.stringify(updatedSettings));
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('settingsChanged'));
+  const updateSettings = () => {
+    console.warn('useSettings.updateSettings is deprecated. Use settings pages/services instead.');
   };
 
-  const getSetting = (key) => {
-    return settings?.[key];
-  };
-
+  const getSetting = (key) => settings?.[key];
   const getSettings = () => settings;
 
   return {
     settings,
+    loading,
+    reloadSettings,
     updateSettings,
     getSetting,
     getSettings

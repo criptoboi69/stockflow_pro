@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Icon from '../../../components/AppIcon';
+import useCompanySettings from '../../../hooks/useCompanySettings';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../../contexts/AuthContext';
+import useResponsive from '../../../hooks/useResponsive';
 
 const ProductTable = ({ 
   products, 
@@ -19,52 +21,10 @@ const ProductTable = ({
   onSort
 }) => {
   const { isAdministrator, isManager } = useAuth();
-  const [showPrices, setShowPrices] = useState(false);
-
-  useEffect(() => {
-    // Only administrators and managers can see prices
-    const canSeePrices = isAdministrator() || isManager();
-    
-    if (canSeePrices) {
-      // Load price display setting from localStorage for admins/managers
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false); // Default to true if not set
-      } else {
-        setShowPrices(true);
-      }
-    } else {
-      // Regular users never see prices
-      setShowPrices(false);
-    }
-  }, [isAdministrator, isManager]);
-
-  useEffect(() => {
-    // Only listen for settings changes if user has permission to see prices
-    const canSeePrices = isAdministrator() || isManager();
-    if (!canSeePrices) return;
-
-    const loadPriceSetting = () => {
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false);
-      }
-    };
-
-    const handleSettingsChange = () => {
-      loadPriceSetting();
-    };
-
-    window.addEventListener('settingsChanged', handleSettingsChange);
-    window.addEventListener('storage', handleSettingsChange);
-
-    return () => {
-      window.removeEventListener('settingsChanged', handleSettingsChange);
-      window.removeEventListener('storage', handleSettingsChange);
-    };
-  }, []);
+  const { isMobile } = useResponsive();
+  const { settings } = useCompanySettings();
+  const canSeePrices = isAdministrator() || isManager();
+  const showPrices = canSeePrices && settings?.showPrices !== false;
 
   const getStatusBadge = (status, quantity) => {
     if (quantity === 0) {
@@ -110,13 +70,15 @@ const ProductTable = ({
         <table className="w-full">
           <thead className="bg-muted border-b border-border">
             <tr>
-              <th className="w-12 p-4">
-                <Checkbox
-                  checked={isAllSelected}
-                  indeterminate={isPartiallySelected}
-                  onChange={(e) => onSelectAll(e?.target?.checked)}
-                />
-              </th>
+              {!isMobile && (
+                <th className="w-12 p-4">
+                  <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={isPartiallySelected}
+                    onChange={(e) => onSelectAll(e?.target?.checked)}
+                  />
+                </th>
+              )}
               <th className="text-left p-4 font-medium text-text-primary">Image</th>
               <th className="text-left p-4 font-medium text-text-primary">
                 <Button
@@ -129,30 +91,23 @@ const ProductTable = ({
                   <Icon name={getSortIcon('name')} size={14} className="ml-1" />
                 </Button>
               </th>
-              <th className="text-left p-4 font-medium text-text-primary">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('sku')}
-                  className="p-0 h-auto font-medium hover:text-primary"
-                >
-                  SKU
-                  <Icon name={getSortIcon('sku')} size={14} className="ml-1" />
-                </Button>
-              </th>
-              <th className="text-left p-4 font-medium text-text-primary">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('category')}
-                  className="p-0 h-auto font-medium hover:text-primary"
-                >
-                  Catégorie
-                  <Icon name={getSortIcon('category')} size={14} className="ml-1" />
-                </Button>
-              </th>
-              <th className="text-left p-4 font-medium text-text-primary">Emplacement</th>
-              {showPrices && (
+              {!isMobile && (
+                <>
+                  <th className="text-left p-4 font-medium text-text-primary">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('category')}
+                      className="p-0 h-auto font-medium hover:text-primary"
+                    >
+                      Catégorie
+                      <Icon name={getSortIcon('category')} size={14} className="ml-1" />
+                    </Button>
+                  </th>
+                  <th className="text-left p-4 font-medium text-text-primary">Emplacement</th>
+                </>
+              )}
+              {!isMobile && showPrices && (
                 <th className="text-left p-4 font-medium text-text-primary">
                   <Button
                     variant="ghost"
@@ -192,44 +147,52 @@ const ProductTable = ({
                     isSelected ? 'bg-primary/5' : ''
                   }`}
                 >
-                  <td className="p-4">
-                    <Checkbox
-                      checked={isSelected}
-                      onChange={(e) => onSelectProduct(product?.id, e?.target?.checked)}
-                    />
-                  </td>
-                  <td className="p-4">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
+                  {!isMobile && (
+                    <td className="p-4">
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={(e) => onSelectProduct(product?.id, e?.target?.checked)}
+                      />
+                    </td>
+                  )}
+                  <td className={isMobile ? 'p-3' : 'p-4'}>
+                    <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-lg overflow-hidden bg-muted`}>
                       <Image
-                        src={product?.image}
-                        alt={product?.imageAlt}
+                        src={product?.imageUrl || product?.imageUrls?.[0] || product?.image || '/assets/images/no_image.png'}
+                        alt={`Image de ${product?.name}`}
                         className="w-full h-full object-cover"
                       />
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className={`${isMobile ? 'p-3 min-w-[190px]' : 'p-4 min-w-[220px]'}`}>
                     <div>
                       <p className="font-medium text-text-primary">{product?.name}</p>
-                      {product?.description && (
-                        <p className="text-sm text-text-muted line-clamp-1">{product?.description}</p>
+                      {isMobile ? (
+                        <div className="mt-1 space-y-1 text-xs text-text-muted">
+                          <div><span className="font-medium">Catégorie:</span> {product?.category || '—'}</div>
+                          <div className="flex items-center space-x-1"><Icon name="MapPin" size={12} /><span>{product?.location || '—'}</span></div>
+                        </div>
+                      ) : (
+                        product?.description && (
+                          <p className="text-sm text-text-muted line-clamp-1">{product?.description}</p>
+                        )
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
-                    <code className="text-sm bg-muted px-2 py-1 rounded text-text-primary">
-                      {product?.sku}
-                    </code>
-                  </td>
-                  <td className="p-4">
-                    <span className="text-text-primary">{product?.category}</span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center space-x-1 text-text-muted">
-                      <Icon name="MapPin" size={14} />
-                      <span>{product?.location}</span>
-                    </div>
-                  </td>
-                  {showPrices && (
+                  {!isMobile && (
+                    <>
+                      <td className="p-4">
+                        <span className="text-text-primary">{product?.category}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-1 text-text-muted">
+                          <Icon name="MapPin" size={14} />
+                          <span>{product?.location}</span>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                  {!isMobile && showPrices && (
                     <td className="p-4">
                       <span className="text-text-primary font-medium">
                         {product?.price ? `${product?.price} €` : '-'}
@@ -251,7 +214,7 @@ const ProductTable = ({
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center justify-end space-x-1">
+                    <div className={`flex items-center justify-end ${isMobile ? 'flex-col gap-1 min-w-[44px]' : 'space-x-1'}`}>
                       <Button
                         variant="ghost"
                         size="icon"

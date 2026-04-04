@@ -7,26 +7,24 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 
-import { useAuth } from '../../../hooks/useAuth';
-
 const QRCodeGenerator = ({ 
   product, 
   isOpen, 
   onClose, 
   onGenerate 
 }) => {
-  const { isAdministrator, isManager } = useAuth();
   const [qrConfig, setQrConfig] = useState({
     size: 256,
     level: 'M', // Error correction level
     includeMargin: true,
     fgColor: '#000000',
-    bgColor: '#FFFFFF'
+    bgColor: '#FFFFFF',
+    printFormat: 'label_50x30'
   });
   const [qrData, setQrData] = useState('');
-  const [customData, setCustomData] = useState('');
-  const [dataType, setDataType] = useState('product_management_url');
+  const [qrVersionToken, setQrVersionToken] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const qrRef = useRef(null);
 
   const errorLevels = [
@@ -43,65 +41,32 @@ const QRCodeGenerator = ({
     { value: 1024, label: '1024x1024 px' }
   ];
 
-  const dataTypeOptions = [
-    { value: 'product_management_url', label: 'URL Gestion Produit (Recommandé)' },
-    { value: 'product_page_url', label: 'URL Page Produit' },
-    { value: 'stock_management_url', label: 'URL Gestion Stock Directe' },
-    { value: 'product_info', label: 'Informations produit' },
-    { value: 'sku_only', label: 'SKU uniquement' },
-    { value: 'custom', label: 'Données personnalisées' }
+  const printFormatOptions = [
+    { value: 'label_50x30', label: 'Étiquette 50x30 mm (collante)' },
+    { value: 'label_62x29', label: 'Étiquette 62x29 mm (DYMO style)' },
+    { value: 'a4', label: 'A4 standard' }
   ];
 
   useEffect(() => {
     if (product && isOpen) {
-      generateQRData();
+      const existing = product?.qrCode || '';
+      const existingTokenMatch = existing.match(/[?&]qr=([^&]+)/);
+      setQrVersionToken(existingTokenMatch?.[1] || '');
+      generateQRData(existingTokenMatch?.[1] || '');
     }
-  }, [product, dataType, customData, isOpen]);
+  }, [product, isOpen]);
 
-  const generateQRData = () => {
-    if (!product) return;
-
-    let data = '';
+  const buildProductStockManagementUrl = (tokenOverride = '') => {
     const baseUrl = window.location?.origin;
-    const skuParam = encodeURIComponent(product?.sku || '');
-    const productSearchUrl = `${baseUrl}/products?search=${skuParam}`;
-    const stockSearchUrl = `${baseUrl}/stock-movements?search=${skuParam}`;
-    
-    switch (dataType) {
-      case 'product_management_url':
-        // Route existante vers la page produits avec filtre de recherche
-        data = productSearchUrl;
-        break;
-      case 'product_page_url':
-        // Route existante vers la page produits avec filtre de recherche
-        data = productSearchUrl;
-        break;
-      case 'stock_management_url':
-        // Route existante vers la page de mouvements avec recherche préremplie
-        data = stockSearchUrl;
-        break;
-      case 'product_info':
-        data = JSON.stringify({
-          id: product?.id,
-          name: product?.name,
-          sku: product?.sku,
-          price: product?.price,
-          category: product?.category,
-          location: product?.location,
-          management_url: productSearchUrl,
-          stock_url: stockSearchUrl
-        });
-        break;
-      case 'sku_only':
-        data = product?.sku || '';
-        break;
-      case 'custom':
-        data = customData;
-        break;
-      default:
-        data = productSearchUrl;
-    }
-    setQrData(data);
+    const productId = encodeURIComponent(product?.id || '');
+    const token = tokenOverride || qrVersionToken || '';
+    const tokenSuffix = token ? `&qr=${encodeURIComponent(token)}` : '';
+    return `${baseUrl}/products?product=${productId}&mode=add-movement${tokenSuffix}`;
+  };
+
+  const generateQRData = (forcedToken = '') => {
+    if (!product) return;
+    setQrData(buildProductStockManagementUrl(forcedToken));
   };
 
   const handleConfigChange = (field, value) => {
@@ -158,76 +123,82 @@ const QRCodeGenerator = ({
         scale: 3
       });
 
-      // Create PDF for printing
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
       const imgData = canvas?.toDataURL('image/png');
-      const qrSize = 80; // 80mm square
-      const x = (210 - qrSize) / 2; // Center horizontally on A4
-      const y = 40; // 40mm from top
+      const format = qrConfig?.printFormat || 'label_50x30';
+      const productLabel = String(product?.name || 'Produit').trim() || 'Produit';
 
-      // Add header
-      pdf?.setFontSize(18);
-      pdf?.text('QR Code - Gestion Produit', 105, 20, { align: 'center' });
-      
-      pdf?.setFontSize(14);
-      pdf?.text(product?.name || 'Produit', 105, 30, { align: 'center' });
-      
-      pdf?.setFontSize(12);
-      pdf?.text(`SKU: ${product?.sku || 'N/A'}`, 105, 35, { align: 'center' });
-
-      // Add QR code
-      pdf?.addImage(imgData, 'PNG', x, y, qrSize, qrSize);
-
-      // Add instructions
-      pdf?.setFontSize(11);
-      pdf?.text('Instructions:', 20, y + qrSize + 15);
-      
-      const instructions = [
-        '• Scanner ce QR code pour accéder rapidement au produit',
-        '• Gérer les quantités directement depuis votre mobile',
-        '• Suivre les mouvements de stock en temps réel',
-        '• Accès optimisé pour les terminaux mobiles'
-      ];
-
-      instructions?.forEach((instruction, index) => {
-        pdf?.text(instruction, 20, y + qrSize + 20 + (index * 5));
-      });
-
-      // Add additional product details
-      if (product) {
-        pdf?.setFontSize(10);
-        const canSeePrices = isAdministrator() || isManager();
-        
-        const details = [
-          `Catégorie: ${product?.category || 'N/A'}`,
-          ...(canSeePrices ? [`Prix: ${product?.price ? `${product?.price}€` : 'N/A'}`] : []),
-          `Stock actuel: ${product?.quantity || 0}`,
-          `Emplacement: ${product?.location || 'N/A'}`,
-          `Stock minimum: ${product?.minStock || 0}`
-        ];
-
-        pdf?.text('Détails du produit:', 20, y + qrSize + 45);
-        details?.forEach((detail, index) => {
-          pdf?.text(detail, 20, y + qrSize + 50 + (index * 4));
+      if (format === 'label_50x30' || format === 'label_62x29') {
+        const labelW = format === 'label_62x29' ? 62 : 50;
+        const labelH = format === 'label_62x29' ? 29 : 30;
+        const pageW = Math.min(labelW, labelH);
+        const pageH = Math.max(labelW, labelH);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [pageW, pageH]
         });
+
+        const padding = 1.5;
+        const textHeight = 4;
+        const availableHeight = pageH - (padding * 2) - textHeight;
+        const qrSize = Math.min(pageW - (padding * 2), availableHeight);
+        const x = (pageW - qrSize) / 2;
+        const y = padding;
+        pdf?.addImage(imgData, 'PNG', x, y, qrSize, qrSize);
+
+        pdf?.setFontSize(7);
+        pdf?.text(productLabel, pageW / 2, pageH - padding, {
+          align: 'center',
+          maxWidth: pageW - (padding * 2)
+        });
+
+        pdf?.autoPrint();
+        window.open(pdf?.output('bloburl'), '_blank');
+        return;
       }
 
-      // Add footer
-      pdf?.setFontSize(8);
-      pdf?.text('Généré par StockFlow Pro - Système de gestion d\'inventaire', 105, 280, { align: 'center' });
-
-      // Open print dialog
+      // A4 fallback
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const qrSize = 170;
+      const x = (210 - qrSize) / 2;
+      const y = 15;
+      pdf?.addImage(imgData, 'PNG', x, y, qrSize, qrSize);
+      pdf?.setFontSize(12);
+      pdf?.text(productLabel, 105, y + qrSize + 8, {
+        align: 'center',
+        maxWidth: 180
+      });
       pdf?.autoPrint();
       window.open(pdf?.output('bloburl'), '_blank');
     } catch (error) {
       console.error('Error printing QR code:', error);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!onGenerate) return;
+
+    const hasExistingQr = !!product?.qrCode;
+    if (hasExistingQr) {
+      const confirmed = window.confirm('Ce produit possède déjà un QR code enregistré. Veux-tu le remplacer par le nouveau QR ?');
+      if (!confirmed) return;
+    }
+
+    const newToken = `${Date.now()}`;
+    const nextQrData = buildProductStockManagementUrl(newToken);
+
+    setQrVersionToken(newToken);
+    setQrData(nextQrData);
+
+    setIsSaving(true);
+    try {
+      await onGenerate(nextQrData, qrConfig);
+    } catch (error) {
+      console.error('Error regenerating QR code:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -240,22 +211,7 @@ const QRCodeGenerator = ({
   };
 
   const getDataTypeDescription = () => {
-    switch (dataType) {
-      case 'product_management_url':
-        return 'QR code optimisé pour la gestion mobile des stocks. Accès direct à la page produit avec options de modification de quantité.';
-      case 'product_page_url':
-        return 'Lien direct vers la page de consultation du produit.';
-      case 'stock_management_url':
-        return 'Accès direct au module de gestion des mouvements de stock pour ce produit.';
-      case 'product_info':
-        return 'Informations complètes du produit au format JSON avec URL de gestion.';
-      case 'sku_only':
-        return 'Code SKU uniquement pour identification rapide.';
-      case 'custom':
-        return 'Données personnalisées définies par l\'utilisateur.';
-      default:
-        return '';
-    }
+    return 'QR code optimisé pour gérer le stock de ce produit. Accès direct au produit avec ouverture sur le mode mouvement de stock.';
   };
 
   if (!isOpen) return null;
@@ -295,26 +251,16 @@ const QRCodeGenerator = ({
                 <h3 className="text-lg font-medium text-text-primary mb-4">Configuration</h3>
                 <div className="space-y-4">
                   <div>
-                    <Select
+                    <Input
                       label="Type de QR Code"
-                      options={dataTypeOptions}
-                      value={dataType}
-                      onChange={(value) => setDataType(value)}
+                      type="text"
+                      value="URL Gestion Produit"
+                      disabled
                     />
                     <p className="text-xs text-text-muted mt-1">
                       {getDataTypeDescription()}
                     </p>
                   </div>
-
-                  {dataType === 'custom' && (
-                    <Input
-                      label="Données personnalisées"
-                      type="text"
-                      value={customData}
-                      onChange={(e) => setCustomData(e?.target?.value)}
-                      placeholder="Entrez vos données personnalisées"
-                    />
-                  )}
 
                   <Select
                     label="Taille"
@@ -330,46 +276,43 @@ const QRCodeGenerator = ({
                     onChange={(value) => handleConfigChange('level', value)}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-2">
-                        Couleur de premier plan
+                  <Select
+                    label="Format d'impression"
+                    options={printFormatOptions}
+                    value={qrConfig?.printFormat}
+                    onChange={(value) => handleConfigChange('printFormat', value)}
+                  />
+
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <label className="relative cursor-pointer" title="Couleur du QR code">
+                        <input
+                          type="color"
+                          value={qrConfig?.fgColor}
+                          onChange={(e) => handleConfigChange('fgColor', e?.target?.value)}
+                          className="sr-only"
+                        />
+                        <div className="w-10 h-10 rounded-lg border border-border flex items-center justify-center" style={{ backgroundColor: qrConfig?.fgColor }}>
+                          <Icon name="QrCode" size={16} className="text-white mix-blend-difference" />
+                        </div>
                       </label>
-                      <input
-                        type="color"
-                        value={qrConfig?.fgColor}
-                        onChange={(e) => handleConfigChange('fgColor', e?.target?.value)}
-                        className="w-full h-10 rounded border border-border cursor-pointer"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary mb-2">
-                        Couleur d'arrière-plan
+
+                      <label className="relative cursor-pointer" title="Couleur d'arrière-plan">
+                        <input
+                          type="color"
+                          value={qrConfig?.bgColor}
+                          onChange={(e) => handleConfigChange('bgColor', e?.target?.value)}
+                          className="sr-only"
+                        />
+                        <div className="w-10 h-10 rounded-lg border border-border flex items-center justify-center" style={{ backgroundColor: qrConfig?.bgColor }}>
+                          <Icon name="PaintBucket" size={16} className="text-black/70" />
+                        </div>
                       </label>
-                      <input
-                        type="color"
-                        value={qrConfig?.bgColor}
-                        onChange={(e) => handleConfigChange('bgColor', e?.target?.value)}
-                        className="w-full h-10 rounded border border-border cursor-pointer"
-                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Usage Instructions */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center">
-                  <Icon name="Info" size={16} className="mr-2" />
-                  Utilisation du QR Code
-                </h4>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>• Scanner avec un smartphone ou tablette</li>
-                  <li>• Accès direct à la page de gestion du produit</li>
-                  <li>• Modification rapide des quantités</li>
-                  <li>• Optimisé pour usage mobile en entrepôt</li>
-                </ul>
-              </div>
 
               {/* Data Preview */}
               <div>
@@ -471,10 +414,15 @@ const QRCodeGenerator = ({
                   </Button>
                 </div>
                 
-                <div className="text-center">
+                <div className="text-center space-y-2">
                   <p className="text-xs text-text-muted">
                     Le QR code permet un accès direct à la gestion des quantités de ce produit
                   </p>
+                  {product?.qrCode && (
+                    <p className="text-xs text-warning">
+                      Un QR code est déjà enregistré pour ce produit.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -493,10 +441,13 @@ const QRCodeGenerator = ({
           {onGenerate && (
             <Button
               variant="default"
-              onClick={() => onGenerate(qrData, qrConfig)}
-              disabled={!qrData}
+              onClick={handleRegenerate}
+              disabled={!qrData || isSaving}
+              loading={isSaving}
+              iconName="RefreshCw"
+              iconPosition="left"
             >
-              Utiliser ce QR Code
+              {product?.qrCode ? 'Régénérer le QR' : 'Enregistrer ce QR'}
             </Button>
           )}
         </div>

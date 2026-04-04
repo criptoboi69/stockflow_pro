@@ -11,27 +11,46 @@ class StorageService {
    */
   async uploadProductImage(file, productId) {
     try {
-      // Generate unique file path
-      const timestamp = Date.now();
-      const fileExt = file?.name?.split('.')?.pop();
-      const fileName = `${productId}_${timestamp}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      if (!file) throw new Error('Aucun fichier image fourni');
 
-      // Upload file
-      const { data, error } = await supabase?.storage?.from(BUCKET_NAME)?.upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
+      if (!(allowedTypes.includes(file.type) || String(file.type || '').startsWith('image/'))) {
+        throw new Error('Type de fichier non supporté');
+      }
 
-      if (error) throw error;
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error('Fichier trop volumineux (max 20MB)');
+      }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase?.storage?.from(BUCKET_NAME)?.getPublicUrl(filePath);
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('productId', productId);
 
-      return { filePath: data?.path, publicUrl };
+      console.log('[upload] file selected', {
+        name: file?.name,
+        type: file?.type,
+        size: file?.size,
+        productId
+      });
+
+      const uploadEndpoint = '/api/upload-product-image';
+      console.log('[upload] request started', { endpoint: uploadEndpoint });
+      const response = await fetch(uploadEndpoint, {
+        method: 'POST',
+        body: formData
+      });
+
+      const payload = await response.json();
+      console.log('[upload] response received', { ok: response.ok, status: response.status, payload });
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Échec upload image');
+      }
+
+      return { filePath: payload.filePath, publicUrl: payload.publicUrl };
     } catch (error) {
       console.error('Upload error:', error);
-      throw error;
+      const msg = error?.message || error?.error_description || error?.details || JSON.stringify(error) || 'Échec upload image';
+      throw new Error(msg);
     }
   }
 
@@ -59,7 +78,7 @@ class StorageService {
 
       const { error } = await supabase?.storage?.from(BUCKET_NAME)?.remove([filePath]);
 
-      if (error) throw error;
+      if (error) { console.error('[Storage upload supabase error]', error); throw error; }
     } catch (error) {
       console.error('Delete error:', error);
       throw error;
@@ -78,7 +97,7 @@ class StorageService {
           sortBy: { column: 'name', order: 'asc' }
         });
 
-      if (error) throw error;
+      if (error) { console.error('[Storage upload supabase error]', error); throw error; }
 
       // Filter by product ID
       return data?.filter(file => file?.name?.startsWith(productId)) || [];

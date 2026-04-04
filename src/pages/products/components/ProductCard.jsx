@@ -1,57 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Icon from '../../../components/AppIcon';
+import useCompanySettings from '../../../hooks/useCompanySettings';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement }) => {
   const { isAdministrator, isManager } = useAuth();
-  const [showPrices, setShowPrices] = useState(false);
-
-  useEffect(() => {
-    // Only administrators and managers can see prices
-    const canSeePrices = isAdministrator() || isManager();
-    
-    if (canSeePrices) {
-      // Load price display setting from localStorage for admins/managers
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false); // Default to true if not set
-      } else {
-        setShowPrices(true);
-      }
-    } else {
-      // Regular users never see prices
-      setShowPrices(false);
-    }
-  }, [isAdministrator, isManager]);
-
-  useEffect(() => {
-    // Only listen for settings changes if user has permission to see prices
-    const canSeePrices = isAdministrator() || isManager();
-    if (!canSeePrices) return;
-
-    const loadPriceSetting = () => {
-      const savedSettings = localStorage.getItem('generalSettings');
-      if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        setShowPrices(settings?.showPrices !== false);
-      }
-    };
-
-    const handleSettingsChange = () => {
-      loadPriceSetting();
-    };
-
-    window.addEventListener('settingsChanged', handleSettingsChange);
-    window.addEventListener('storage', handleSettingsChange);
-
-    return () => {
-      window.removeEventListener('settingsChanged', handleSettingsChange);
-      window.removeEventListener('storage', handleSettingsChange);
-    };
-  }, [isAdministrator, isManager]);
+  const { settings } = useCompanySettings();
+  const canSeePrices = isAdministrator() || isManager();
+  const showPrices = canSeePrices && settings?.showPrices !== false;
 
   const getStatusBadge = (status, quantity) => {
     if (quantity === 0) {

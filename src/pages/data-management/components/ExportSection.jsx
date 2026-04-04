@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import categoryService from '../../../services/categoryService';
 
-const ExportSection = ({ onExportStart, isExporting }) => {
+const ExportSection = ({ onExportStart, isExporting, companyId }) => {
   const [exportConfig, setExportConfig] = useState({
     format: 'csv',
     dateRange: 'all',
@@ -15,24 +16,35 @@ const ExportSection = ({ onExportStart, isExporting }) => {
   });
 
   const formatOptions = [
-    { value: 'csv', label: 'CSV Format' },
-    { value: 'xlsx', label: 'Excel Format' },
-    { value: 'json', label: 'JSON Format' }
+    { value: 'csv', label: 'CSV' },
+    { value: 'xlsx', label: 'Excel (.xlsx → export CSV pour le moment)' },
+    { value: 'json', label: 'JSON' }
   ];
 
   const dateRangeOptions = [
-    { value: 'all', label: 'All Time' },
-    { value: 'last_30', label: 'Last 30 Days' },
-    { value: 'last_90', label: 'Last 90 Days' },
-    { value: 'custom', label: 'Custom Range' }
+    { value: 'all', label: 'Toute la période' },
+    { value: 'last_30', label: '30 derniers jours' },
+    { value: 'last_90', label: '90 derniers jours' },
+    { value: 'custom', label: 'Période personnalisée' }
   ];
 
-  const categoryOptions = [
-    { value: 'electronics', label: 'Electronics' },
-    { value: 'furniture', label: 'Furniture' },
-    { value: 'office_supplies', label: 'Office Supplies' },
-    { value: 'tools', label: 'Tools' }
-  ];
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      if (!companyId) {
+        setCategoryOptions([]);
+        return;
+      }
+      const categories = await categoryService.getCategories(companyId);
+      const options = (categories || []).map((category) => ({
+        value: category?.name,
+        label: category?.name
+      }));
+      setCategoryOptions(options);
+    };
+    loadCategories();
+  }, [companyId]);
 
   const handleExport = () => {
     onExportStart(exportConfig);
@@ -49,25 +61,25 @@ const ExportSection = ({ onExportStart, isExporting }) => {
     <div className="bg-card rounded-2xl border border-border p-6 card-shadow">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-text-primary">Export Products</h2>
-          <p className="text-sm text-text-muted mt-1">Download product data in various formats</p>
+          <h2 className="text-xl font-semibold text-text-primary">Export produits</h2>
+          <p className="text-sm text-text-muted mt-1">Télécharge les données produits dans le format utile.</p>
         </div>
         <div className="flex items-center space-x-2 text-sm text-text-muted">
-          <Icon name="Clock" size={16} />
-          <span>Last export: 2 hours ago</span>
+          <Icon name="Database" size={16} />
+          <span>Source : produits de la société active</span>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="space-y-4">
           <Select
-            label="Export Format"
+            label="Format d'export"
             options={formatOptions}
             value={exportConfig?.format}
             onChange={(value) => handleConfigChange('format', value)}
           />
 
           <Select
-            label="Date Range"
+            label="Période"
             options={dateRangeOptions}
             value={exportConfig?.dateRange}
             onChange={(value) => handleConfigChange('dateRange', value)}
@@ -91,8 +103,8 @@ const ExportSection = ({ onExportStart, isExporting }) => {
 
         <div className="space-y-4">
           <Select
-            label="Categories"
-            description="Leave empty to export all categories"
+            label="Catégories"
+            description="Laisser vide pour exporter toutes les catégories"
             options={categoryOptions}
             value={exportConfig?.categories}
             onChange={(value) => handleConfigChange('categories', value)}
@@ -102,17 +114,17 @@ const ExportSection = ({ onExportStart, isExporting }) => {
           />
 
           <div className="space-y-3">
-            <label className="text-sm font-medium text-text-primary">Additional Options</label>
+            <label className="text-sm font-medium text-text-primary">Options supplémentaires</label>
             <div className="space-y-2">
               <Checkbox
-                label="Include product images"
-                description="Export with image URLs"
+                label="Inclure les images produits"
+                description="Ajoute les URLs des images dans l'export"
                 checked={exportConfig?.includeImages}
                 onChange={(e) => handleConfigChange('includeImages', e?.target?.checked)}
               />
               <Checkbox
-                label="Include movement history"
-                description="Export with stock movement data"
+                label="Inclure l'historique de mouvements"
+                description="Prépare le terrain pour enrichir l'export stock plus tard"
                 checked={exportConfig?.includeMovements}
                 onChange={(e) => handleConfigChange('includeMovements', e?.target?.checked)}
               />
@@ -124,19 +136,18 @@ const ExportSection = ({ onExportStart, isExporting }) => {
         <div className="flex items-start space-x-3">
           <Icon name="Info" size={20} className="text-accent mt-0.5" />
           <div>
-            <h4 className="font-medium text-text-primary mb-1">Export Information</h4>
+            <h4 className="font-medium text-text-primary mb-1">Infos export</h4>
             <ul className="text-sm text-text-muted space-y-1">
-              <li>• Estimated file size: ~2.5 MB</li>
-              <li>• Estimated records: 1,247 products</li>
-              <li>• Processing time: 30-60 seconds</li>
-              <li>• Download link expires in 24 hours</li>
+              <li>• Le téléchargement se lance localement dès que le fichier est prêt.</li>
+              <li>• Le format Excel reste pour l’instant un fallback CSV.</li>
+              <li>• Les catégories viennent de la base active, pas d’une liste statique.</li>
             </ul>
           </div>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="text-sm text-text-muted">
-          Export will be generated as a secure download link
+          L’export est généré depuis les données réelles de la société active.
         </div>
         <Button
           variant="default"
@@ -145,7 +156,7 @@ const ExportSection = ({ onExportStart, isExporting }) => {
           iconName="Download"
           iconPosition="left"
         >
-          Generate Export
+          Générer l'export
         </Button>
       </div>
     </div>

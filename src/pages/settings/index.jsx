@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import PageHeader from '../../components/ui/PageHeader';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import GeneralParametersTab from './components/GeneralParametersTab';
 import NotificationSettingsTab from './components/NotificationSettingsTab';
 import CompanyManagementTab from './components/CompanyManagementTab';
-import UserPreferencesTab from './components/UserPreferencesTab';
+
 import { useAuth } from '../../contexts/AuthContext';
+import UserPreferencesTab from './components/UserPreferencesTab';
+import settingsService from '../../services/settingsService';
 
 const Settings = () => {
-  const { currentRole, currentCompany, companies, switchCompany, user } = useAuth();
+  const { currentRole, currentCompany, companies, switchCompany, user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -69,8 +72,15 @@ const Settings = () => {
 
   const handleSave = async (section, data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      localStorage.setItem(`settings_${section}`, JSON.stringify(data));
+      if (section === 'general' && currentCompany?.id) {
+        const { error } = await settingsService.updateCompanySettings(currentCompany.id, 'general', data);
+        if (error) throw error;
+      } else if (section === 'preferences' && user?.id) {
+        const { error } = await settingsService.updateUserPreferences(user.id, data);
+        if (error) throw error;
+      } else {
+        localStorage.setItem(`settings_${section}`, JSON.stringify(data));
+      }
       const now = new Date();
       setLastSaved(now);
       localStorage.setItem('settingsLastSaved', now?.toISOString());
@@ -104,9 +114,9 @@ const Settings = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
-        return <GeneralParametersTab userRole={currentRole} onSave={handleSave} />;
+        return <GeneralParametersTab userRole={currentRole} currentCompanyId={currentCompany?.id} onSave={handleSave} />;
       case 'notifications':
-        return <NotificationSettingsTab userRole={currentRole} onSave={handleSave} />;
+        return <NotificationSettingsTab userRole={currentRole} currentCompanyId={currentCompany?.id} onSave={handleSave} />;
       case 'companies':
         return <CompanyManagementTab userRole={currentRole} onSave={handleSave} />;
       case 'preferences':
@@ -115,10 +125,12 @@ const Settings = () => {
           currentTenant={currentCompany?.name}
           companies={companies}
           onSwitchCompany={switchCompany}
+          profile={profile}
+          user={user}
           onSave={handleSave}
         />;
       default:
-        return <GeneralParametersTab userRole={currentRole} onSave={handleSave} />;
+        return <GeneralParametersTab userRole={currentRole} currentCompanyId={currentCompany?.id} onSave={handleSave} />;
     }
   };
 
@@ -140,24 +152,14 @@ const Settings = () => {
 
         {/* Main Content */}
         <main className={`transition-all duration-200 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-72'} pt-14 sm:pt-16 lg:pt-0`}>
-          {/* Header */}
-          <div className="bg-surface border-b border-border px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Icon name="Settings" size={24} className="text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Paramètres</h1>
-                  <p className="text-sm text-text-muted mt-1">
-                    Configuration système et préférences utilisateur
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
+          <PageHeader
+            title="Paramètres"
+            subtitle="Configuration système et préférences utilisateur"
+            icon={<Icon name="Settings" size={24} className="text-primary" />}
+            actions={
+              <>
                 {lastSaved && (
-                  <div className="flex items-center space-x-2 text-sm text-text-muted">
+                  <div className="hidden lg:flex items-center space-x-2 text-sm text-text-muted">
                     <Icon name="Clock" size={16} />
                     <span>
                       Dernière sauvegarde: {lastSaved?.toLocaleDateString('fr-FR')} {lastSaved?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -166,18 +168,21 @@ const Settings = () => {
                 )}
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={handleExportAllSettings}
                   iconName="Download"
                   iconPosition="left"
-                  className="hidden sm:flex"
+                  className="hidden sm:flex text-xs lg:text-sm"
                 >
                   Exporter la configuration
                 </Button>
-              </div>
-            </div>
+              </>
+            }
+          />
 
+          <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
             {/* Horizontal Tabs */}
-            <div className="mt-6 border-b border-border">
+            <div className="border-b border-border">
               <nav className="flex space-x-1 overflow-x-auto">
                 {accessibleTabs?.map((tab) => (
                   <button

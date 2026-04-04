@@ -8,11 +8,13 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
 
   const getRoleColor = (role) => {
     switch (role) {
-      case 'SUPER_ADMIN':
+      case 'super_admin':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'ADMIN_SOCIETE':
+      case 'admin':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'MEMBRE':
+      case 'manager':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'employee':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -43,53 +45,20 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
     });
   };
 
-  const activityLog = [
-    {
-      id: 1,
-      action: 'Connexion',
-      timestamp: '2024-10-25T10:30:00Z',
-      details: 'Connexion depuis Chrome sur Windows',
-      icon: 'LogIn',
-      color: 'text-success'
-    },
-    {
-      id: 2,
-      action: 'Modification de produit',
-      timestamp: '2024-10-25T09:15:00Z',
-      details: 'Mise à jour du stock - Produit #12345',
-      icon: 'Edit',
-      color: 'text-primary'
-    },
-    {
-      id: 3,
-      action: 'Scan QR',
-      timestamp: '2024-10-25T08:45:00Z',
-      details: 'Scan de 15 produits en entrepôt A',
-      icon: 'QrCode',
-      color: 'text-accent'
-    },
-    {
-      id: 4,
-      action: 'Export de données',
-      timestamp: '2024-10-24T16:20:00Z',
-      details: 'Export CSV - 250 produits',
-      icon: 'Download',
-      color: 'text-secondary'
-    }
-  ];
+  const activityLog = [];
 
   const permissions = [
     { name: 'Voir les produits', granted: true },
-    { name: 'Modifier les produits', granted: user?.role !== 'MEMBRE' },
-    { name: 'Supprimer les produits', granted: user?.role !== 'MEMBRE' },
-    { name: 'Gérer les catégories', granted: user?.role !== 'MEMBRE' },
-    { name: 'Gérer les emplacements', granted: user?.role !== 'MEMBRE' },
+    { name: 'Modifier les produits', granted: ['manager', 'admin', 'super_admin']?.includes(user?.role) },
+    { name: 'Supprimer les produits', granted: ['admin', 'super_admin']?.includes(user?.role) },
+    { name: 'Gérer les catégories', granted: ['manager', 'admin', 'super_admin']?.includes(user?.role) },
+    { name: 'Gérer les emplacements', granted: ['manager', 'admin', 'super_admin']?.includes(user?.role) },
     { name: 'Scanner les QR codes', granted: true },
     { name: 'Voir les mouvements de stock', granted: true },
     { name: 'Créer des mouvements', granted: true },
-    { name: 'Importer/Exporter des données', granted: user?.role !== 'MEMBRE' },
-    { name: 'Gérer les utilisateurs', granted: user?.role !== 'MEMBRE' },
-    { name: 'Accès aux paramètres', granted: user?.role !== 'MEMBRE' }
+    { name: 'Importer/Exporter des données', granted: ['manager', 'admin', 'super_admin']?.includes(user?.role) },
+    { name: 'Gérer les utilisateurs', granted: ['admin', 'super_admin']?.includes(user?.role) },
+    { name: 'Accès aux paramètres', granted: ['admin', 'super_admin']?.includes(user?.role) }
   ];
 
   return (

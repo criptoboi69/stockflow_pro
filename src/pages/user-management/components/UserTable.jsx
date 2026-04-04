@@ -20,11 +20,11 @@ const UserTable = ({
     switch (role) {
       case 'super_admin':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'administrator':
+      case 'admin':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'manager':
         return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'user':
+      case 'employee':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -34,9 +34,9 @@ const UserTable = ({
   const getRoleLabel = (role) => {
     const labels = {
       super_admin: 'Super Admin',
-      administrator: 'Administrateur',
+      admin: 'Administrateur',
       manager: 'Gestionnaire',
-      user: 'Utilisateur'
+      employee: 'Employé'
     };
     return labels?.[role] || role;
   };
@@ -61,7 +61,7 @@ const UserTable = ({
   const canEdit = (user) => {
     return currentUserRole === 'super_admin' || 
       (currentUserRole === 'administrator' && user?.role !== 'super_admin') ||
-      (currentUserRole === 'manager' && user?.role === 'user');
+      (currentUserRole === 'manager' && user?.role === 'employee');
   };
 
   const handleSort = (field) => {
@@ -166,12 +166,17 @@ const UserTable = ({
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                        user?.status === 'active' ? 'bg-success' : 
-                        user?.status === 'pending' ? 'bg-warning' : 'bg-error'
+                        user?.isActive ? 'bg-success' : 'bg-error'
                       }`} />
                     </div>
                     <div>
-                      <p className="font-medium text-text-primary">{user?.name}</p>
+                      <p className="font-medium text-text-primary">
+                    {(user?.firstName || user?.fullName || user?.name) 
+                      ? (user?.firstName && user?.lastName 
+                          ? user.firstName + ' ' + user.lastName 
+                          : user?.fullName || user?.name || '')
+                      : ''}
+                  </p>
                       <p className="text-sm text-text-muted">{user?.email}</p>
                     </div>
                   </div>
@@ -188,9 +193,8 @@ const UserTable = ({
                   <span className="text-sm text-text-secondary">{formatLastLogin(user?.lastLogin)}</span>
                 </td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user?.status)}`}>
-                    {user?.status === 'active' ? 'Actif' :
-                     user?.status === 'pending' ? 'En attente' : 'Inactif'}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user?.isActive)}`}>
+                    {user?.isActive ? 'Actif' : 'Inactif'}
                   </span>
                 </td>
                 <td className="p-4">
@@ -218,11 +222,11 @@ const UserTable = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => onToggleStatus(user)}
+                          onClick={() => onToggleStatus(user?.id, user?.isActive)}
                           className="text-text-secondary hover:text-text-primary"
-                          title={user?.status === 'active' ? 'Désactiver' : 'Activer'}
+                          title={user?.isActive ? 'Désactiver' : 'Activer'}
                         >
-                          <Icon name={user?.status === 'active' ? 'UserX' : 'UserCheck'} size={16} />
+                          <Icon name={user?.isActive ? 'UserX' : 'UserCheck'} size={16} />
                         </Button>
                       </>
                     )}

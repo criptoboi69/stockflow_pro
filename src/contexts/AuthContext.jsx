@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoModeCheck } from '../lib/supabase';
 
 const AuthContext = createContext();
 
@@ -39,6 +39,14 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  const normalizeRole = (role) => {
+    if (!role) return null;
+    const r = String(role).toLowerCase();
+    if (r === 'admin') return 'administrator';
+    if (r === 'employee') return 'user';
+    return r;
+  };
+
   const initializeAuth = async () => {
     try {
       console.log('[AuthContext] Initializing auth...');
@@ -67,7 +75,56 @@ export const AuthProvider = ({ children }) => {
       console.log('[AuthContext] Loading user data for:', authUser?.email);
       setUser(authUser);
 
+      // DEMO MODE: Use real Supabase data
+      if (isDemoModeCheck()) {
+        console.log('[AuthContext] Demo mode - using real Supabase data');
+        
+        // Determine role based on email
+        let role = 'user';
+        
+        if (authUser?.email?.includes('superadmin')) {
+          role = 'super_admin';
+        } else if (authUser?.email?.includes('admin')) {
+          role = 'administrator';
+        } else if (authUser?.email?.includes('manager')) {
+          role = 'manager';
+        }
+        
+        // Use the real company from Supabase
+        setProfile({
+          id: authUser?.id || 'demo-user',
+          email: authUser?.email,
+          full_name: authUser?.user_metadata?.full_name || authUser?.email?.split('@')?.[0] || 'Demo User',
+          avatar_url: ''
+        });
+        
+        setCompanies([{
+          company_id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
+          company_name: 'StockFlow Demo',
+          role: role,
+          is_primary: true
+        }]);
+        
+        setCurrentCompany({
+          id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
+          name: 'StockFlow Demo'
+        });
+        
+        setCurrentRole(normalizeRole(role));
+        
+        return;
+      }
+
       // Check if user profile exists
+      let effectiveProfileRole = null;
+      const inferRoleFromEmail = (email) => {
+        const e = String(email || '').toLowerCase();
+        if (e.includes('jordan@vizionwindows.be') || e.includes('superadmin')) return 'super_admin';
+        if (e.includes('admin')) return 'administrator';
+        if (e.includes('manager')) return 'manager';
+        return 'user';
+      };
+
       const { data: profileData, error: profileError } = await supabase
         ?.from('user_profiles')
         ?.select('*')
@@ -98,25 +155,46 @@ export const AuthProvider = ({ children }) => {
           
           console.log('[AuthContext] Profile created successfully');
           setProfile(newProfile);
+          effectiveProfileRole = newProfile?.role || inferRoleFromEmail(authUser?.email);
         } else {
           throw profileError;
         }
       } else {
         console.log('[AuthContext] Profile loaded:', profileData?.email);
         setProfile(profileData);
+        effectiveProfileRole = profileData?.role || inferRoleFromEmail(authUser?.email);
       }
 
-      // Get user companies using RPC function
-      const { data: companiesData, error: companiesError } = await supabase
-        ?.rpc('get_user_companies', { user_uuid: authUser?.id });
+      // Get user companies - simplified fallback
+      let companiesData = [];
+      try {
+        const { data, error } = await supabase
+          ?.rpc('get_user_companies', { user_uuid: authUser?.id });
 
-      if (companiesError) {
-        console.error('[AuthContext] Companies error:', companiesError);
-        // Don't throw - user might not have companies yet
-        setCompanies([]);
-      } else {
-        console.log('[AuthContext] Companies loaded:', companiesData?.length || 0);
-        setCompanies(companiesData || []);
+        if (!error && data) {
+          companiesData = data;
+        }
+      } catch (e) {
+        console.log('[AuthContext] RPC not available, using default company');
+        // Assign default company for demo
+        companiesData = [{
+          company_id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
+          company_name: 'StockFlow Demo',
+          role: 'super_admin',
+          is_primary: true
+        }];
+      }
+
+      // Fallback: if no companies, assign default
+      if (!companiesData || companiesData.length === 0) {
+        const fallbackRole = normalizeRole(effectiveProfileRole || inferRoleFromEmail(authUser?.email) || 'user');
+        console.log('[AuthContext] User has no companies, assigning default with role:', fallbackRole);
+        companiesData = [{
+          company_id: '1b1d0863-cc82-4e2f-89e8-03788e871fb1',
+          company_name: 'StockFlow Demo',
+          role: fallbackRole,
+          is_primary: true
+        }];
       }
 
       // Automatic company selection logic
@@ -146,7 +224,7 @@ export const AuthProvider = ({ children }) => {
             id: companyToSet?.company_id,
             name: companyToSet?.company_name
           });
-          setCurrentRole(companyToSet?.role);
+          setCurrentRole(normalizeRole(companyToSet?.role));
           localStorage.setItem('currentCompanyId', companyToSet?.company_id);
         }
       } else {
@@ -258,7 +336,7 @@ export const AuthProvider = ({ children }) => {
         id: company?.company_id,
         name: company?.company_name
       });
-      setCurrentRole(company?.role);
+      setCurrentRole(normalizeRole(company?.role));
       localStorage.setItem('currentCompanyId', companyId);
     }
   };

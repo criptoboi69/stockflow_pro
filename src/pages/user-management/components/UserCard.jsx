@@ -8,11 +8,11 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
     switch (role) {
       case 'super_admin':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'administrator':
+      case 'admin':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'manager':
         return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'user':
+      case 'employee':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -22,9 +22,9 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
   const getRoleLabel = (role) => {
     const labels = {
       super_admin: 'Super Admin',
-      administrator: 'Administrateur',
+      admin: 'Administrateur',
       manager: 'Gestionnaire',
-      user: 'Utilisateur'
+      employee: 'Employé'
     };
     return labels?.[role] || role;
   };
@@ -48,7 +48,7 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
 
   const canEdit = currentUserRole === 'super_admin' || 
     (currentUserRole === 'administrator' && user?.role !== 'super_admin') ||
-    (currentUserRole === 'manager' && user?.role === 'user');
+    (currentUserRole === 'manager' && user?.role === 'employee');
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 card-shadow hover:shadow-lg transition-hover">
@@ -61,12 +61,11 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
               className="w-12 h-12 rounded-full object-cover"
             />
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-              user?.status === 'active' ? 'bg-success' : 
-              user?.status === 'pending' ? 'bg-warning' : 'bg-error'
+              user?.isActive ? 'bg-success' : 'bg-error'
             }`} />
           </div>
           <div>
-            <h3 className="font-semibold text-text-primary">{user?.name}</h3>
+            <h3 className="font-semibold text-text-primary">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.fullName || user?.name)}</h3>
             <p className="text-sm text-text-muted">{user?.email}</p>
           </div>
         </div>
@@ -84,10 +83,11 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onToggleStatus(user)}
+              onClick={() => onToggleStatus(user?.id, user?.isActive)}
               className="text-text-secondary hover:text-text-primary"
+              title={user?.isActive ? 'Désactiver' : 'Activer'}
             >
-              <Icon name={user?.status === 'active' ? 'UserX' : 'UserCheck'} size={16} />
+              <Icon name={user?.isActive ? 'UserX' : 'UserCheck'} size={16} />
             </Button>
           </div>
         )}
@@ -102,9 +102,8 @@ const UserCard = ({ user, onEdit, onToggleStatus, onViewDetails, currentUserRole
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-text-secondary">Statut</span>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user?.status)}`}>
-            {user?.status === 'active' ? 'Actif' :
-             user?.status === 'pending' ? 'En attente' : 'Inactif'}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user?.isActive)}`}>
+            {user?.isActive ? 'Actif' : 'Inactif'}
           </span>
         </div>
 

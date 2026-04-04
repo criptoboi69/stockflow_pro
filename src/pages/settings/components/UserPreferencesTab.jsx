@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import InlineFeedback from '../../../components/ui/InlineFeedback';
 import { useTheme } from '../../../hooks/useTheme';
+import settingsService from '../../../services/settingsService';
 
-const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompany, onSave }) => {
-  const { theme, changeTheme, getCurrentTheme, isDark } = useTheme();
-  
+const UserPreferencesTab = ({ currentTenant, companies, onSwitchCompany, onSave, user, profile }) => {
+  const { theme, changeTheme } = useTheme();
+
   const [preferences, setPreferences] = useState({
     personalInfo: {
-      firstName: 'Jean',
-      lastName: 'Dupont',
-      email: 'jean.dupont@techcorp.fr',
-      phone: '+33 1 23 45 67 89',
-      avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      avatar: ''
     },
     interface: {
       theme: 'light',
-      language: 'fr',
-      dateFormat: 'DD/MM/YYYY',
       timeFormat: '24h',
       density: 'comfortable'
     },
@@ -30,12 +30,6 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
       showWelcomeMessage: true,
       autoRefresh: true,
       refreshInterval: 30
-    },
-    notifications: {
-      desktop: true,
-      email: true,
-      sound: false,
-      frequency: 'immediate'
     }
   });
 
@@ -43,38 +37,8 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-
-  const themeOptions = [
-    { 
-      value: 'light', 
-      label: 'Clair',
-      description: 'Interface claire et lumineuse',
-      icon: 'Sun'
-    },
-    { 
-      value: 'dark', 
-      label: 'Sombre',
-      description: 'Interface sombre pour réduire la fatigue oculaire',
-      icon: 'Moon'
-    },
-    { 
-      value: 'auto', 
-      label: 'Automatique',
-      description: 'Suit les préférences de votre système',
-      icon: 'Laptop'
-    }
-  ];
-
-  const languageOptions = [
-    { value: 'fr', label: 'Français' },
-    { value: 'en', label: 'English' }
-  ];
-
-  const dateFormatOptions = [
-    { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
-    { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-    { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' }
-  ];
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [feedback, setFeedback] = useState(null);
 
   const timeFormatOptions = [
     { value: '24h', label: '24 heures' },
@@ -107,141 +71,207 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
     { value: 300, label: '5 minutes' }
   ];
 
-  const frequencyOptions = [
-    { value: 'immediate', label: 'Immédiat' },
-    { value: 'hourly', label: 'Toutes les heures' },
-    { value: 'daily', label: 'Quotidien' }
-  ];
-
-  const companyOptions = companies?.map(company => ({
+  const companyOptions = companies?.map((company) => ({
     value: company?.company_id,
     label: company?.company_name,
     badge: company?.is_primary ? 'Principal' : null
   })) || [];
 
   useEffect(() => {
-    // Load preferences from localStorage
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
-      try {
-        const parsed = JSON.parse(savedPreferences);
-        setPreferences(parsed);
-        // Sync theme with theme provider
-        if (parsed?.interface?.theme && parsed?.interface?.theme !== theme) {
-          changeTheme(parsed?.interface?.theme);
-        }
-      } catch (error) {
-        console.error('Error loading preferences:', error);
-      }
-    }
+    const splitFullName = (fullName = '') => {
+      const normalized = String(fullName || '').trim();
+      if (!normalized) return { firstName: '', lastName: '' };
+      const parts = normalized.split(/\s+/);
+      return {
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || ''
+      };
+    };
 
-    const currentCompany = companies?.find(c => c?.company_name === currentTenant);
-    if (currentCompany) {
-      setSelectedCompanyId(currentCompany?.company_id);
-    }
-  }, [currentTenant, companies]);
+    const loadProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const currentCompany = companies?.find((c) => c?.company_name === currentTenant);
+        if (currentCompany) setSelectedCompanyId(currentCompany?.company_id);
+
+        if (!user?.id) {
+          setLoadingProfile(false);
+          return;
+        }
+
+        const { data, error } = await settingsService.getUserPreferences(user.id);
+        if (error) throw error;
+
+        const dbPreferences = data?.preferences || {};
+        const dbNameParts = splitFullName(data?.full_name);
+        const profileNameParts = splitFullName(profile?.full_name);
+
+        const resolvedFirstName = data?.first_name || dbNameParts.firstName || profile?.first_name || profileNameParts.firstName || '';
+        const resolvedLastName = data?.last_name || dbNameParts.lastName || profile?.last_name || profileNameParts.lastName || '';
+
+        const next = {
+          personalInfo: {
+            firstName: resolvedFirstName,
+            lastName: resolvedLastName,
+            email: data?.email || user?.email || '',
+            phone: data?.phone || profile?.phone || '',
+            avatar: data?.avatar_url || profile?.avatar_url || ''
+          },
+          interface: {
+            theme: dbPreferences?.interface?.theme || theme || 'light',
+            timeFormat: dbPreferences?.interface?.timeFormat || '24h',
+            density: dbPreferences?.interface?.density || 'comfortable'
+          },
+          dashboard: {
+            defaultView: dbPreferences?.dashboard?.defaultView || 'grid',
+            itemsPerPage: dbPreferences?.dashboard?.itemsPerPage || 20,
+            showWelcomeMessage: dbPreferences?.dashboard?.showWelcomeMessage ?? true,
+            autoRefresh: dbPreferences?.dashboard?.autoRefresh ?? true,
+            refreshInterval: dbPreferences?.dashboard?.refreshInterval || 30
+          }
+        };
+
+        setPreferences(next);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        setFeedback({ type: 'error', message: error?.message || 'Erreur lors du chargement du profil.' });
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [user?.id, user?.email, profile?.first_name, profile?.last_name, profile?.full_name, profile?.phone, profile?.avatar_url, currentTenant, companies, theme]);
+
+  const markChanged = () => {
+    setHasChanges(true);
+    setFeedback(null);
+  };
 
   const handleCompanyChange = async (companyId) => {
     setSelectedCompanyId(companyId);
-    if (onSwitchCompany) {
-      await onSwitchCompany(companyId);
-    }
+    if (onSwitchCompany) await onSwitchCompany(companyId);
     setHasChanges(false);
   };
 
   const handlePersonalInfoChange = (field, value) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
-      personalInfo: {
-        ...prev?.personalInfo,
-        [field]: value
-      }
+      personalInfo: { ...prev?.personalInfo, [field]: value }
     }));
-    setHasChanges(true);
+    markChanged();
   };
 
   const handleInterfaceChange = (field, value) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
-      interface: {
-        ...prev?.interface,
-        [field]: value
-      }
+      interface: { ...prev?.interface, [field]: value }
     }));
-    setHasChanges(true);
-
-    // Enhanced theme change handling
-    if (field === 'theme') {
-      changeTheme(value);
-    }
+    if (field === 'theme') changeTheme(value);
+    markChanged();
   };
 
   const handleDashboardChange = (field, value) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
-      dashboard: {
-        ...prev?.dashboard,
-        [field]: value
-      }
+      dashboard: { ...prev?.dashboard, [field]: value }
     }));
-    setHasChanges(true);
-  };
-
-  const handleNotificationChange = (field, value) => {
-    setPreferences(prev => ({
-      ...prev,
-      notifications: {
-        ...prev?.notifications,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
+    markChanged();
   };
 
   const handleAvatarUpload = async (event) => {
     const file = event?.target?.files?.[0];
-    if (!file) return;
+    if (!file || !user?.id) return;
 
     setUploadingAvatar(true);
     try {
-      // Simulate file upload
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create a mock URL for the uploaded avatar
-      const mockAvatarUrl = `https://randomuser.me/api/portraits/men/${Math.floor(Math.random() * 50)}.jpg`;
-      
-      handlePersonalInfoChange('avatar', mockAvatarUrl);
+      const { data, error } = await settingsService.uploadAvatar(user.id, file);
+      if (error) throw error;
+      handlePersonalInfoChange('avatar', data);
+      setFeedback({ type: 'success', message: 'Avatar uploadé avec succès.' });
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      setFeedback({ type: 'error', message: error?.message || "Erreur lors de l'upload de l'avatar." });
     } finally {
       setUploadingAvatar(false);
     }
   };
 
   const handleSave = async () => {
+    if (!user?.id) {
+      setFeedback({ type: 'error', message: 'Aucun utilisateur connecté.' });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      localStorage.setItem('userPreferences', JSON.stringify(preferences));
-      await onSave('preferences', preferences);
+      await onSave('preferences', {
+        profile: {
+          firstName: preferences?.personalInfo?.firstName,
+          lastName: preferences?.personalInfo?.lastName,
+          phone: preferences?.personalInfo?.phone,
+          avatar: preferences?.personalInfo?.avatar
+        },
+        preferences: {
+          interface: preferences?.interface,
+          dashboard: preferences?.dashboard
+        }
+      });
       setHasChanges(false);
+      setFeedback({ type: 'success', message: 'Informations personnelles sauvegardées.' });
     } catch (error) {
       console.error('Error saving preferences:', error);
+      setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleReset = () => {
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
-      const parsed = JSON.parse(savedPreferences);
-      setPreferences(parsed);
-      // Reset theme to saved preference
-      if (parsed?.interface?.theme) {
-        changeTheme(parsed?.interface?.theme);
+  const handleReset = async () => {
+    const splitFullName = (fullName = '') => {
+      const normalized = String(fullName || '').trim();
+      if (!normalized) return { firstName: '', lastName: '' };
+      const parts = normalized.split(/\s+/);
+      return {
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || ''
+      };
+    };
+
+    setHasChanges(false);
+    setFeedback(null);
+    if (user?.id) {
+      setLoadingProfile(true);
+      try {
+        const { data } = await settingsService.getUserPreferences(user.id);
+        const dbPreferences = data?.preferences || {};
+        const dbNameParts = splitFullName(data?.full_name);
+        const profileNameParts = splitFullName(profile?.full_name);
+        setPreferences({
+          personalInfo: {
+            firstName: data?.first_name || dbNameParts.firstName || profile?.first_name || profileNameParts.firstName || '',
+            lastName: data?.last_name || dbNameParts.lastName || profile?.last_name || profileNameParts.lastName || '',
+            email: data?.email || user?.email || '',
+            phone: data?.phone || profile?.phone || '',
+            avatar: data?.avatar_url || profile?.avatar_url || ''
+          },
+          interface: {
+            theme: dbPreferences?.interface?.theme || theme || 'light',
+            timeFormat: dbPreferences?.interface?.timeFormat || '24h',
+            density: dbPreferences?.interface?.density || 'comfortable'
+          },
+          dashboard: {
+            defaultView: dbPreferences?.dashboard?.defaultView || 'grid',
+            itemsPerPage: dbPreferences?.dashboard?.itemsPerPage || 20,
+            showWelcomeMessage: dbPreferences?.dashboard?.showWelcomeMessage ?? true,
+            autoRefresh: dbPreferences?.dashboard?.autoRefresh ?? true,
+            refreshInterval: dbPreferences?.dashboard?.refreshInterval || 30
+          }
+        });
+      } finally {
+        setLoadingProfile(false);
       }
     }
-    setHasChanges(false);
   };
 
   const handleExportPreferences = () => {
@@ -251,12 +281,17 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
     const link = document.createElement('a');
     link.href = url;
     link.download = 'preferences.json';
-    link?.click();
+    link.click();
   };
+
+  if (loadingProfile) {
+    return <div className="rounded-lg border border-border bg-card p-6 text-text-muted">Chargement du profil...</div>;
+  }
 
   return (
     <div className="space-y-8">
-      {/* Personal Information */}
+      <InlineFeedback type={feedback?.type} message={feedback?.message} />
+
       <div className="bg-card rounded-lg border border-border p-6 theme-transition">
         <div className="flex items-center space-x-3 mb-6">
           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -264,375 +299,134 @@ const UserPreferencesTab = ({ userRole, currentTenant, companies, onSwitchCompan
           </div>
           <div>
             <h3 className="text-lg font-semibold text-text-primary">Informations personnelles</h3>
-            <p className="text-sm text-text-muted">Gérer vos informations de profil</p>
+            <p className="text-sm text-text-muted">Profil lié au compte connecté</p>
           </div>
         </div>
 
-        <div className="flex items-start space-x-6 mb-6">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-muted">
-              <img
-                src={preferences?.personalInfo?.avatar}
-                alt="Professional headshot of user avatar"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = '/assets/images/no_image.png';
-                }}
-              />
-            </div>
-            <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
-              <Icon name="Camera" size={16} className="text-primary-foreground" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-                disabled={uploadingAvatar}
-              />
-            </label>
-            {uploadingAvatar && (
-              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full"></div>
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+            <div className="text-xs text-text-muted">Compte connecté</div>
+            <div className="mt-1 text-sm font-medium text-text-primary">{user?.email || preferences?.personalInfo?.email || '—'}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+            <div className="text-xs text-text-muted">Entreprise active</div>
+            <div className="mt-1 text-sm font-medium text-text-primary">{currentTenant || '—'}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+            <div className="text-xs text-text-muted">ID utilisateur</div>
+            <div className="mt-1 text-sm font-medium text-text-primary truncate">{user?.id || '—'}</div>
+          </div>
+        </div>
+
+        {(!preferences?.personalInfo?.firstName && !preferences?.personalInfo?.lastName) && (
+          <div className="mb-4 rounded-lg border border-warning/20 bg-warning/5 p-3 text-sm text-text-muted">
+            Le profil connecté n’a pas encore de prénom/nom clairement renseigné dans <span className="font-medium text-text-primary">user_profiles</span>.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 bg-muted">
+                  {preferences?.personalInfo?.avatar ? (
+                    <img src={preferences?.personalInfo?.avatar} alt="Avatar utilisateur" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-text-muted">
+                      <Icon name="User" size={42} />
+                    </div>
+                  )}
+                </div>
+                <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                  {uploadingAvatar ? <Icon name="Loader2" size={16} className="text-primary-foreground animate-spin" /> : <Icon name="Camera" size={16} className="text-primary-foreground" />}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                </label>
               </div>
-            )}
+              <p className="text-xs text-text-muted text-center">Compte : {preferences?.personalInfo?.email || user?.email || '—'}</p>
+            </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Prénom"
               value={preferences?.personalInfo?.firstName}
               onChange={(e) => handlePersonalInfoChange('firstName', e?.target?.value)}
+              placeholder="Non renseigné"
+              description={!preferences?.personalInfo?.firstName ? 'Aucune valeur enregistrée pour le moment.' : undefined}
             />
-
             <Input
               label="Nom"
               value={preferences?.personalInfo?.lastName}
               onChange={(e) => handlePersonalInfoChange('lastName', e?.target?.value)}
+              placeholder="Non renseigné"
+              description={!preferences?.personalInfo?.lastName ? 'Aucune valeur enregistrée pour le moment.' : undefined}
             />
-
-            <Input
-              label="Email"
-              type="email"
-              value={preferences?.personalInfo?.email}
-              onChange={(e) => handlePersonalInfoChange('email', e?.target?.value)}
-            />
-
+            <Input label="Email" value={preferences?.personalInfo?.email} disabled description="Lié au compte connecté" />
             <Input
               label="Téléphone"
-              type="tel"
               value={preferences?.personalInfo?.phone}
               onChange={(e) => handlePersonalInfoChange('phone', e?.target?.value)}
+              placeholder="Non renseigné"
+              description={!preferences?.personalInfo?.phone ? 'Ajoute un numéro si tu veux le retrouver ici.' : undefined}
             />
           </div>
         </div>
       </div>
-      {/* Enhanced Interface Preferences with Theme Preview */}
+
       <div className="bg-card rounded-lg border border-border p-6 theme-transition">
         <div className="flex items-center space-x-3 mb-6">
           <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-            <Icon name="Palette" size={20} className="text-accent" />
+            <Icon name="LayoutDashboard" size={20} className="text-accent" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-text-primary">Préférences d'interface</h3>
-            <p className="text-sm text-text-muted">Personnaliser l'apparence de l'application</p>
-          </div>
-        </div>
-
-        {/* Theme Selection with Preview Cards */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-text-primary mb-3">
-            Thème de l'interface
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {themeOptions?.map((option) => (
-              <div
-                key={option?.value}
-                onClick={() => handleInterfaceChange('theme', option?.value)}
-                className={`
-                  relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:shadow-md
-                  ${preferences?.interface?.theme === option?.value
-                    ? 'border-primary bg-primary/5' :'border-border bg-muted/20 hover:border-border'
-                  }
-                `}
-              >
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className={`
-                    w-8 h-8 rounded-lg flex items-center justify-center
-                    ${preferences?.interface?.theme === option?.value 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-text-muted'
-                    }
-                  `}>
-                    <Icon name={option?.icon} size={16} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-text-primary">{option?.label}</p>
-                    <p className="text-xs text-text-muted">{option?.description}</p>
-                  </div>
-                </div>
-
-                {/* Theme Preview */}
-                <div className={`
-                  mt-3 p-3 rounded border text-xs
-                  ${option?.value === 'light' ? 'bg-white border-slate-200 text-slate-900' :
-                    option?.value === 'dark'? 'bg-slate-800 border-slate-600 text-slate-50' : 'bg-gradient-to-r from-white via-slate-100 to-slate-800 border-slate-300 text-slate-700'
-                  }
-                `}>
-                  <div className="flex items-center justify-between">
-                    <span>Aperçu du thème</span>
-                    {preferences?.interface?.theme === option?.value && (
-                      <Icon name="Check" size={12} className="text-primary" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Current theme indicator */}
-                {preferences?.interface?.theme === option?.value && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                    <Icon name="Check" size={12} className="text-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Current effective theme info */}
-          <div className="flex items-center space-x-2 text-sm text-text-muted">
-            <Icon name="Info" size={16} />
-            <span>
-              Thème actuel: {getCurrentTheme() === 'dark' ? 'Sombre' : 'Clair'}
-              {preferences?.interface?.theme === 'auto' && ' (automatique)'}
-            </span>
+            <h3 className="text-lg font-semibold text-text-primary">Affichage personnel</h3>
+            <p className="text-sm text-text-muted">Préférences de vue propres à ton compte</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Select
-            label="Langue"
-            description="Langue de l'interface utilisateur"
-            options={languageOptions}
-            value={preferences?.interface?.language}
-            onChange={(value) => handleInterfaceChange('language', value)}
-          />
+          <Select label="Format d'heure" options={timeFormatOptions} value={preferences?.interface?.timeFormat} onChange={(value) => handleInterfaceChange('timeFormat', value)} />
+          <Select label="Densité d'affichage" options={densityOptions} value={preferences?.interface?.density} onChange={(value) => handleInterfaceChange('density', value)} />
+          <Select label="Vue par défaut" options={viewOptions} value={preferences?.dashboard?.defaultView} onChange={(value) => handleDashboardChange('defaultView', value)} />
+          <Select label="Éléments par page" options={itemsPerPageOptions} value={preferences?.dashboard?.itemsPerPage} onChange={(value) => handleDashboardChange('itemsPerPage', Number(value))} />
+        </div>
 
-          <Select
-            label="Format de date"
-            description="Format d'affichage des dates"
-            options={dateFormatOptions}
-            value={preferences?.interface?.dateFormat}
-            onChange={(value) => handleInterfaceChange('dateFormat', value)}
-          />
-
-          <Select
-            label="Format d'heure"
-            description="Format d'affichage de l'heure"
-            options={timeFormatOptions}
-            value={preferences?.interface?.timeFormat}
-            onChange={(value) => handleInterfaceChange('timeFormat', value)}
-          />
-
-          <Select
-            label="Densité d'affichage"
-            description="Espacement des éléments"
-            options={densityOptions}
-            value={preferences?.interface?.density}
-            onChange={(value) => handleInterfaceChange('density', value)}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <Select label="Rafraîchissement automatique" options={refreshIntervalOptions} value={preferences?.dashboard?.refreshInterval} onChange={(value) => handleDashboardChange('refreshInterval', Number(value))} />
+          <div className="flex items-end">
+            <Checkbox label="Afficher le message de bienvenue" checked={preferences?.dashboard?.showWelcomeMessage} onChange={(e) => handleDashboardChange('showWelcomeMessage', e?.target?.checked)} />
+          </div>
         </div>
       </div>
-      {/* Dashboard Preferences */}
-      <div className="bg-card rounded-lg border border-border p-6 theme-transition">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-            <Icon name="LayoutDashboard" size={20} className="text-secondary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Préférences du tableau de bord</h3>
-            <p className="text-sm text-text-muted">Personnaliser l'affichage du tableau de bord</p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          <Select
-            label="Vue par défaut"
-            description="Mode d'affichage préféré"
-            options={viewOptions}
-            value={preferences?.dashboard?.defaultView}
-            onChange={(value) => handleDashboardChange('defaultView', value)}
-          />
-
-          <Select
-            label="Éléments par page"
-            description="Nombre d'éléments affichés"
-            options={itemsPerPageOptions}
-            value={preferences?.dashboard?.itemsPerPage}
-            onChange={(value) => handleDashboardChange('itemsPerPage', value)}
-          />
-
-          <Select
-            label="Intervalle de rafraîchissement"
-            description="Fréquence de mise à jour automatique"
-            options={refreshIntervalOptions}
-            value={preferences?.dashboard?.refreshInterval}
-            onChange={(value) => handleDashboardChange('refreshInterval', value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Checkbox
-            label="Afficher le message de bienvenue"
-            description="Afficher un message d'accueil sur le tableau de bord"
-            checked={preferences?.dashboard?.showWelcomeMessage}
-            onChange={(e) => handleDashboardChange('showWelcomeMessage', e?.target?.checked)}
-          />
-
-          <Checkbox
-            label="Rafraîchissement automatique"
-            description="Mettre à jour automatiquement les données"
-            checked={preferences?.dashboard?.autoRefresh}
-            onChange={(e) => handleDashboardChange('autoRefresh', e?.target?.checked)}
-          />
-        </div>
-      </div>
-      {/* Notification Preferences */}
-      <div className="bg-card rounded-lg border border-border p-6 theme-transition">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
-            <Icon name="Bell" size={20} className="text-warning" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Préférences de notification</h3>
-            <p className="text-sm text-text-muted">Contrôler comment vous recevez les notifications</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Select
-            label="Fréquence des notifications"
-            description="À quelle fréquence recevoir les notifications"
-            options={frequencyOptions}
-            value={preferences?.notifications?.frequency}
-            onChange={(value) => handleNotificationChange('frequency', value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Checkbox
-            label="Notifications bureau"
-            description="Afficher les notifications sur le bureau"
-            checked={preferences?.notifications?.desktop}
-            onChange={(e) => handleNotificationChange('desktop', e?.target?.checked)}
-          />
-
-          <Checkbox
-            label="Notifications email"
-            description="Recevoir des notifications par email"
-            checked={preferences?.notifications?.email}
-            onChange={(e) => handleNotificationChange('email', e?.target?.checked)}
-          />
-
-          <Checkbox
-            label="Sons de notification"
-            description="Jouer un son pour les notifications"
-            checked={preferences?.notifications?.sound}
-            onChange={(e) => handleNotificationChange('sound', e?.target?.checked)}
-          />
-        </div>
-      </div>
-      {/* Export/Import */}
-      <div className="bg-card rounded-lg border border-border p-6 theme-transition">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
-            <Icon name="Download" size={20} className="text-success" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Sauvegarde des préférences</h3>
-            <p className="text-sm text-text-muted">Exporter ou importer vos préférences</p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            onClick={handleExportPreferences}
-            iconName="Download"
-            iconPosition="left"
-          >
-            Exporter les préférences
-          </Button>
-        </div>
-      </div>
-      {/* Action Buttons */}
-      {hasChanges && (
-        <div className="flex items-center justify-between bg-warning/10 border border-warning/20 rounded-lg p-4 theme-transition">
-          <div className="flex items-center space-x-3">
-            <Icon name="AlertTriangle" size={20} className="text-warning" />
-            <div>
-              <p className="text-sm font-medium text-text-primary">Modifications non sauvegardées</p>
-              <p className="text-xs text-text-muted">Vous avez des modifications en attente</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              onClick={handleReset}
-              disabled={isSaving}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleSave}
-              loading={isSaving}
-              iconName="Save"
-              iconPosition="left"
-            >
-              Sauvegarder
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Company Selection - Only show if user has multiple companies */}
-      {companies && companies?.length > 1 && (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Société active</h3>
-          <div className="space-y-4">
-            <Select
-              label="Sélectionner une société"
-              value={selectedCompanyId}
-              onChange={(e) => handleCompanyChange(e?.target?.value)}
-              options={companies?.map(company => ({
-                value: company?.company_id,
-                label: company?.company_name
-              }))}
-            />
-            {hasChanges && (
-              <p className="text-sm text-info flex items-center gap-2">
-                <Icon name="Info" size={16} />
-                La société sera changée après sauvegarde
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Show current company info when user has only one company */}
-      {companies && companies?.length === 1 && (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Société</h3>
-          <div className="flex items-center gap-3 p-4 bg-background rounded-lg">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <Icon name="Building2" size={24} className="text-primary" />
+      {companyOptions?.length > 1 && (
+        <div className="bg-card rounded-lg border border-border p-6 theme-transition">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+              <Icon name="Building2" size={20} className="text-success" />
             </div>
             <div>
-              <p className="font-medium text-text-primary">{companies?.[0]?.company_name}</p>
-              <p className="text-sm text-text-muted">Votre société</p>
+              <h3 className="text-lg font-semibold text-text-primary">Entreprise active</h3>
+              <p className="text-sm text-text-muted">Changer rapidement d'entreprise</p>
             </div>
           </div>
+          <Select label="Entreprise" options={companyOptions} value={selectedCompanyId} onChange={handleCompanyChange} />
         </div>
       )}
+
+      <div className="bg-card rounded-lg border border-border p-6 theme-transition">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">Sauvegarde</h3>
+            <p className="text-sm text-text-muted">Sauvegarder ou exporter tes préférences</p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={handleExportPreferences} iconName="Download" iconPosition="left">Exporter</Button>
+            <Button variant="outline" onClick={handleReset}>Réinitialiser</Button>
+            <Button onClick={handleSave} loading={isSaving} disabled={!hasChanges} iconName="Save" iconPosition="left">Sauvegarder</Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

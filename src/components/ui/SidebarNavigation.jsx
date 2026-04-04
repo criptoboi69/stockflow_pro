@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Icon from '../AppIcon';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SidebarNavigation = ({
   isCollapsed = false,
@@ -11,9 +12,36 @@ const SidebarNavigation = ({
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
-  const tenantName = typeof currentTenant === 'string' ? currentTenant : currentTenant?.name;
+  let profile = { full_name: null, email: null, avatar_url: null };
+  let currentCompany = null;
+  let currentRole = null;
+  let signOut = null;
+  try {
+    const auth = useAuth();
+    profile = auth?.profile || profile;
+    currentCompany = auth?.currentCompany || null;
+    currentRole = auth?.currentRole || null;
+    signOut = auth?.signOut || null;
+  } catch (e) { console.warn('Auth not ready:', e); }
+  const tenantName = currentCompany?.name || (typeof currentTenant === 'string' ? currentTenant : currentTenant?.name) || 'StockFlow Pro';
+  const displayName = profile?.full_name || profile?.email?.split('@')?.[0] || 'Utilisateur';
+  const normalizedRole = (() => {
+    const raw = String(currentRole || userRole || 'user').toLowerCase();
+    if (raw === 'admin') return 'administrator';
+    if (raw === 'employee') return 'user';
+    return raw;
+  })();
+  const displayRole = normalizedRole?.replace('_', ' ');
 
   const navigationItems = [
+  {
+    id: 'admin-console',
+    label: 'Admin Console',
+    icon: 'ShieldCheck',
+    path: '/admin-console',
+    roles: ['super_admin'],
+    badge: null
+  },
   {
     id: 'dashboard',
     label: 'Tableau de bord',
@@ -79,14 +107,6 @@ const SidebarNavigation = ({
     badge: null
   },
   {
-    id: 'audit-trail',
-    label: 'Journal d\'audit',
-    icon: 'FileText',
-    path: '/audit-trail',
-    roles: ['super_admin', 'administrator'],
-    badge: null
-  },
-  {
     id: 'settings',
     label: 'Paramètres',
     icon: 'Settings',
@@ -98,11 +118,14 @@ const SidebarNavigation = ({
 
   const hasAccess = (roles) => {
     // If role is unknown, hide restricted items by default
-    if (!userRole) return false;
-    return roles?.includes(userRole);
+    if (!normalizedRole) return false;
+    return roles?.includes(normalizedRole);
   };
 
   const accessibleItems = navigationItems?.filter((item) => hasAccess(item?.roles));
+  const visibleItems = accessibleItems?.length
+    ? accessibleItems
+    : navigationItems?.filter((item) => item?.roles?.includes('user'));
 
   const isActive = (path) => {
     return location?.pathname === path || location?.pathname?.startsWith(path + '/');
@@ -125,6 +148,14 @@ const SidebarNavigation = ({
 
   const closeMobile = () => {
     setIsMobileOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (signOut) await signOut();
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
   };
 
   return (
@@ -163,12 +194,12 @@ const SidebarNavigation = ({
 
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full z-50 bg-surface border-r border-border sidebar-shadow transition-all duration-200 ease-out
+        fixed top-0 left-0 h-full z-50 bg-surface border-r border-border sidebar-shadow transition-all duration-200 ease-out flex flex-col
         ${isCollapsed ? 'w-16' : 'w-72'}
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-border">
           {!isCollapsed &&
           <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -187,7 +218,7 @@ const SidebarNavigation = ({
               <ThemeToggle
                 size={isCollapsed ? "sm" : "md"}
                 variant="dropdown"
-                showLabel={!isCollapsed} />
+                showLabel={false} />
 
             </div>
             
@@ -205,9 +236,9 @@ const SidebarNavigation = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-2">
-            {accessibleItems?.map((item) => {
+        <nav className="flex-1 overflow-y-auto px-3 py-3">
+          <div className="space-y-1.5">
+            {visibleItems?.map((item) => {
               const active = isActive(item?.path);
 
               return (
@@ -216,7 +247,7 @@ const SidebarNavigation = ({
                   to={item?.path}
                   onClick={closeMobile}
                   className={`
-                    flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ease-out group touch-target
+                    flex items-center space-x-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 ease-out group touch-target
                     ${active ?
                   'bg-primary/10 text-primary border border-primary/20' : 'text-text-secondary hover:text-text-primary hover:bg-muted/50'}
                   `
@@ -227,12 +258,12 @@ const SidebarNavigation = ({
                     w-6 h-6 flex items-center justify-center transition-colors
                     ${active ? 'text-primary' : 'text-text-muted group-hover:text-text-primary'}
                   `}>
-                    <Icon name={item?.icon} size={20} />
+                    <Icon name={item?.icon} size={18} />
                   </div>
                   
                   {!isCollapsed &&
                   <>
-                      <span className="flex-1 font-medium">{item?.label}</span>
+                      <span className="flex-1 text-sm font-medium">{item?.label}</span>
                       {item?.badge &&
                     <span className="px-2 py-1 text-xs font-medium bg-primary/20 text-primary rounded-full">
                           {item?.badge}
@@ -247,14 +278,14 @@ const SidebarNavigation = ({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="px-3 py-3 border-t border-border">
           {!isCollapsed ?
           <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
                   <img
-                  src="https://images.unsplash.com/photo-1714974528749-fc028e54feb9"
-                  alt="Professional headshot of user avatar in business attire"
+                  src={profile?.avatar_url || '/assets/images/no_image.png'}
+                  alt="User avatar"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.target.src = '/assets/images/no_image.png';
@@ -262,8 +293,8 @@ const SidebarNavigation = ({
 
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">Jean Dupont</p>
-                  <p className="text-xs text-text-muted truncate">Admin • TechCorp</p>
+                  <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
+                  <p className="text-xs text-text-muted truncate">{displayRole} • {tenantName || 'StockFlow Pro'}</p>
                 </div>
               </div>
               
@@ -274,13 +305,21 @@ const SidebarNavigation = ({
                   <span>En ligne</span>
                 </span>
               </div>
+
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-muted/50 transition-colors"
+              >
+                <Icon name="LogOut" size={16} />
+                <span className="text-sm">Se déconnecter</span>
+              </button>
             </div> :
 
           <div className="flex flex-col items-center space-y-2">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
                 <img
-                src="https://images.unsplash.com/photo-1714974528749-fc028e54feb9"
-                alt="Professional headshot of user avatar in business attire"
+                src={profile?.avatar_url || '/assets/images/no_image.png'}
+                alt="User avatar"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.src = '/assets/images/no_image.png';
@@ -288,6 +327,13 @@ const SidebarNavigation = ({
 
               </div>
               <div className="w-2 h-2 bg-success rounded-full"></div>
+              <button
+                onClick={handleLogout}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-muted/50 transition-colors"
+                title="Se déconnecter"
+              >
+                <Icon name="LogOut" size={14} />
+              </button>
             </div>
           }
         </div>

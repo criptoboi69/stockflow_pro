@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import useCompanySettings from './useCompanySettings';
 
 const translations = {
   fr: {
@@ -256,15 +257,23 @@ const parseSettings = () => {
 };
 
 const useTranslation = () => {
+  const { settings: companySettings } = useCompanySettings();
   const [currentLanguage, setCurrentLanguage] = useState(() => {
     const settings = parseSettings();
     return settings?.defaultLanguage || 'fr';
   });
 
   useEffect(() => {
+    const nextLanguage = companySettings?.defaultLanguage || 'fr';
+    if (nextLanguage !== currentLanguage) {
+      setCurrentLanguage(nextLanguage);
+    }
+  }, [companySettings?.defaultLanguage]);
+
+  useEffect(() => {
     // Listen for settings changes
-    const handleStorageChange = () => {
-      const settings = parseSettings();
+    const handleStorageChange = (event) => {
+      const settings = event?.detail || parseSettings();
       if (!settings) return;
 
       const newLanguage = settings?.defaultLanguage || 'fr';
@@ -292,7 +301,7 @@ const useTranslation = () => {
   const changeLanguage = (language) => {
     setCurrentLanguage(language);
     // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('settingsChanged'));
+    window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { defaultLanguage: language } }));
   };
 
   const getCurrentLanguage = () => currentLanguage;

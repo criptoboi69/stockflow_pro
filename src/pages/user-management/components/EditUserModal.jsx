@@ -6,88 +6,85 @@ import Select from '../../../components/ui/Select';
 
 const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     role: '',
-    company: '',
-    status: ''
+    phone: ''
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
+      const fullName = user?.fullName || user?.name || '';
+      const nameParts = fullName.split(' ');
+      const firstName = user?.firstName || nameParts[0] || '';
+      const lastName = user?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+
       setFormData({
-        name: user?.name,
-        email: user?.email,
-        role: user?.role,
-        company: user?.company,
-        status: user?.status
+        firstName,
+        lastName,
+        email: user?.email || '',
+        role: user?.role || 'employee',
+        phone: user?.phone || ''
       });
     }
   }, [user]);
 
   const roleOptions = [
-    { 
-      value: 'MEMBRE', 
-      label: 'Membre',
+    {
+      value: 'employee',
+      label: 'Employé',
       description: 'Accès de base aux fonctionnalités'
     },
-    ...(currentUserRole !== 'MEMBRE' ? [{
-      value: 'ADMIN_SOCIETE',
-      label: 'Admin Société',
+    {
+      value: 'manager',
+      label: 'Manager',
+      description: 'Gestion des équipes et des opérations'
+    },
+    {
+      value: 'admin',
+      label: 'Administrateur',
       description: 'Gestion complète de la société'
-    }] : []),
-    ...(currentUserRole === 'SUPER_ADMIN' ? [{
-      value: 'SUPER_ADMIN',
-      label: 'Super Admin',
-      description: 'Accès complet au système'
-    }] : [])
-  ];
-
-  const statusOptions = [
-    { value: 'active', label: 'Actif', description: 'Utilisateur peut se connecter' },
-    { value: 'inactive', label: 'Inactif', description: 'Accès suspendu' },
-    { value: 'pending', label: 'En attente', description: 'Invitation non acceptée' }
-  ];
-
-  const companyOptions = [
-    { value: 'TechCorp Solutions', label: 'TechCorp Solutions' },
-    { value: 'InnovateLab', label: 'InnovateLab' },
-    { value: 'DataFlow Systems', label: 'DataFlow Systems' },
-    { value: 'CloudTech Enterprises', label: 'CloudTech Enterprises' }
+    },
+    ...(currentUserRole === 'super_admin'
+      ? [
+          {
+            value: 'super_admin',
+            label: 'Super Admin',
+            description: 'Accès complet au système'
+          }
+        ]
+      : [])
   ];
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors?.[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData?.name?.trim()) {
-      newErrors.name = 'Le nom est requis';
+    if (!formData?.firstName?.trim()) {
+      newErrors.firstName = 'Le prénom est requis';
+    }
+
+    if (!formData?.lastName?.trim()) {
+      newErrors.lastName = 'Le nom est requis';
     }
 
     if (!formData?.email?.trim()) {
-      newErrors.email = 'L\'email est requis';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email)) {
-      newErrors.email = 'Format d\'email invalide';
+      newErrors.email = "L'email est requis";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
+      newErrors.email = "Format d'email invalide";
     }
 
     if (!formData?.role) {
       newErrors.role = 'Le rôle est requis';
-    }
-
-    if (!formData?.company) {
-      newErrors.company = 'La société est requise';
-    }
-
-    if (!formData?.status) {
-      newErrors.status = 'Le statut est requis';
     }
 
     setErrors(newErrors);
@@ -96,23 +93,20 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      
-      const updatedUser = {
-        ...user,
-        ...formData,
-        updatedAt: new Date()?.toISOString()
-      };
-
-      onUpdateUser(updatedUser);
-      handleClose();
+      await onUpdateUser(user?.id, {
+        firstName: formData?.firstName,
+        lastName: formData?.lastName,
+        phone: formData?.phone,
+        role: formData?.role
+      });
     } catch (error) {
-      setErrors({ submit: 'Erreur lors de la mise à jour de l\'utilisateur' });
+      setErrors({ submit: 'Erreur lors de la mise à jour' });
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -123,28 +117,13 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
     onClose();
   };
 
-  const handleResendInvitation = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      // Show success message
-    } catch (error) {
-      setErrors({ submit: 'Erreur lors de l\'envoi de l\'invitation' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   if (!isOpen || !user) return null;
 
-  const canEditRole = currentUserRole === 'SUPER_ADMIN' || 
-    (currentUserRole === 'ADMIN_SOCIETE' && user?.role !== 'SUPER_ADMIN');
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-200 p-4">
-      <div className="bg-card rounded-lg w-full max-w-md modal-shadow">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ zIndex: 9999 }}>
+      <div className="bg-card rounded-lg w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-semibold text-text-primary">Modifier l'utilisateur</h2>
+          <h2 className="text-xl font-semibold">Modifier l'utilisateur</h2>
           <Button
             variant="ghost"
             size="icon"
@@ -156,15 +135,26 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <Input
-            label="Nom complet"
-            type="text"
-            placeholder="Entrez le nom complet"
-            value={formData?.name}
-            onChange={(e) => handleInputChange('name', e?.target?.value)}
-            error={errors?.name}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Prénom"
+              type="text"
+              placeholder="Prénom"
+              value={formData?.firstName}
+              onChange={(e) => handleInputChange('firstName', e?.target?.value)}
+              error={errors?.firstName}
+              required
+            />
+            <Input
+              label="Nom"
+              type="text"
+              placeholder="Nom"
+              value={formData?.lastName}
+              onChange={(e) => handleInputChange('lastName', e?.target?.value)}
+              error={errors?.lastName}
+              required
+            />
+          </div>
 
           <Input
             label="Adresse email"
@@ -182,49 +172,17 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
             value={formData?.role}
             onChange={(value) => handleInputChange('role', value)}
             error={errors?.role}
-            disabled={!canEditRole}
             required
           />
 
-          {currentUserRole === 'SUPER_ADMIN' && (
-            <Select
-              label="Société"
-              options={companyOptions}
-              value={formData?.company}
-              onChange={(value) => handleInputChange('company', value)}
-              error={errors?.company}
-              required
-            />
-          )}
-
-          <Select
-            label="Statut"
-            options={statusOptions}
-            value={formData?.status}
-            onChange={(value) => handleInputChange('status', value)}
-            error={errors?.status}
-            required
+          <Input
+            label="Téléphone"
+            type="tel"
+            placeholder="+32 ..."
+            value={formData?.phone}
+            onChange={(e) => handleInputChange('phone', e?.target?.value)}
+            error={errors?.phone}
           />
-
-          {user?.status === 'pending' && (
-            <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-warning">Invitation en attente</p>
-                  <p className="text-xs text-text-muted">L'utilisateur n'a pas encore accepté l'invitation</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendInvitation}
-                  disabled={isLoading}
-                >
-                  Renvoyer
-                </Button>
-              </div>
-            </div>
-          )}
 
           {errors?.submit && (
             <div className="p-3 bg-error/10 border border-error/20 rounded-lg">
@@ -233,20 +191,10 @@ const EditUserModal = ({ isOpen, onClose, onUpdateUser, user, currentUserRole })
           )}
 
           <div className="flex items-center justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Annuler
             </Button>
-            <Button
-              type="submit"
-              loading={isLoading}
-              iconName="Save"
-              iconPosition="left"
-            >
+            <Button type="submit" loading={isLoading} iconName="Save" iconPosition="left">
               Sauvegarder
             </Button>
           </div>

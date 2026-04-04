@@ -13,7 +13,7 @@ const CategoryItem = ({
   const navigate = useNavigate();
 
   const handleProductsClick = () => {
-    navigate(`/products?category=${category?.id}`);
+    navigate(`/products?category=${encodeURIComponent(category?.name || '')}`);
   };
 
   const formatDate = (dateString) => {

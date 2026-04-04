@@ -7,6 +7,7 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import QuickActionBar from '../../components/ui/QuickActionBar';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import PageHeader from '../../components/ui/PageHeader';
 import MovementTimeline from './components/MovementTimeline';
 import MovementFilters from './components/MovementFilters';
 import MovementEditModal from './components/MovementEditModal';
@@ -28,6 +29,7 @@ const StockMovements = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedMovementForDetails, setSelectedMovementForDetails] = useState(null);
   const [error, setError] = useState(null);
+  const [availableLocations, setAvailableLocations] = useState([]);
 
   const itemsPerPage = 20;
 
@@ -73,6 +75,7 @@ const StockMovements = () => {
       const data = await stockMovementService?.getStockMovements(currentCompany?.id);
       setMovements(data);
       setFilteredMovements(data);
+      setAvailableLocations(Array.from(new Set((data || []).map((m) => m?.location).filter(Boolean))).sort());
     } catch (err) {
       console.error('Error loading stock movements:', err);
       setError('Erreur lors du chargement des mouvements de stock');
@@ -94,8 +97,12 @@ const StockMovements = () => {
     }
 
     // Type filter
-    if (filters?.type && filters?.type !== 'all') {
-      filtered = filtered?.filter((movement) => movement?.type === filters?.type);
+    if (filters?.movementType) {
+      filtered = filtered?.filter((movement) => movement?.type === filters?.movementType);
+    }
+
+    if (filters?.location) {
+      filtered = filtered?.filter((movement) => movement?.location === filters?.location);
     }
 
     // Date range filter
@@ -117,6 +124,10 @@ const StockMovements = () => {
 
   const handleSaveAdjustment = async (movementData) => {
     try {
+      if (!['super_admin', 'administrator', 'manager', 'user']?.includes(effectiveRole)) {
+        setError('Accès refusé: rôle insuffisant pour modifier un mouvement');
+        return;
+      }
       await stockMovementService?.updateStockMovement(selectedMovement?.id, movementData);
       setIsEditModalOpen(false);
       setSelectedMovement(null);
@@ -128,18 +139,51 @@ const StockMovements = () => {
   };
 
   const handleExport = () => {
-    const csvData = filteredMovements?.map((movement) => ({
-      Date: new Date(movement?.createdAt)?.toLocaleDateString('fr-FR'),
-      Produit: movement?.product?.name,
-      SKU: movement?.product?.sku,
-      Type: movement?.type,
-      Quantité: movement?.quantity,
-      Solde: movement?.runningBalance,
-      Emplacement: movement?.location,
-      Utilisateur: movement?.user?.fullName,
-      Motif: movement?.reason
-    }));
+    if (!['super_admin', 'administrator']?.includes(effectiveRole)) {
+      setError('Accès refusé: export réservé aux administrateurs');
+      return;
+    }
 
+    try {
+      const rows = filteredMovements?.map((movement) => ({
+        Date: new Date(movement?.createdAt)?.toLocaleDateString('fr-FR'),
+        Heure: new Date(movement?.createdAt)?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        Produit: movement?.product?.name || '',
+        SKU: movement?.product?.sku || '',
+        Type: movement?.type || '',
+        Quantite: movement?.quantity ?? '',
+        Solde: movement?.runningBalance ?? '',
+        Emplacement: movement?.location || '',
+        Utilisateur: movement?.user?.fullName || '',
+        Motif: movement?.reason || ''
+      })) || [];
+
+      if (!rows.length) {
+        setError('Aucun mouvement à exporter');
+        return;
+      }
+
+      const headers = Object.keys(rows[0]);
+      const escape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const csv = [
+        headers.join(';'),
+        ...rows.map((row) => headers.map((header) => escape(row[header])).join(';')),
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `stock-movements-${date}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting stock movements:', err);
+      setError("Erreur lors de l'export des mouvements");
+    }
   };
 
   const handleAddMovement = () => {
@@ -152,6 +196,10 @@ const StockMovements = () => {
 
   const handleSaveNewMovement = async (movementData) => {
     try {
+      if (!['super_admin', 'administrator', 'manager', 'user']?.includes(effectiveRole)) {
+        setError('Accès refusé: rôle insuffisant pour créer un mouvement');
+        return;
+      }
       await stockMovementService?.createStockMovement(movementData, currentCompany?.id, user?.id);
       setIsNewMovementModalOpen(false);
       // Real-time subscription will handle the insert
@@ -222,43 +270,45 @@ const StockMovements = () => {
         {/* Mobile header spacer */}
         <div className="h-16 lg:hidden"></div>
 
-        {/* Main content */}
-        <div className="p-4 lg:p-6 space-y-6">
-          {/* Page header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">Mouvements de stock</h1>
-              <p className="text-text-muted mt-1">
-                Historique complet des mouvements d'inventaire avec timeline et audit
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3">
+        <PageHeader
+          title="Mouvements de stock"
+          subtitle="Historique complet des mouvements d'inventaire"
+          actions={
+            <>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => navigate('/qr-scanner')}
                 iconName="QrCode"
-                iconPosition="left">
+                iconPosition="left"
+                className="text-xs lg:text-sm"
+              >
                 Scanner QR
               </Button>
-              
-              {['super_admin', 'administrator']?.includes(effectiveRole) && (
+
+              {['super_admin', 'administrator', 'manager', 'user']?.includes(effectiveRole) && (
                 <Button
+                  size="sm"
                   onClick={handleNewMovement}
                   iconName="Plus"
-                  iconPosition="left">
+                  iconPosition="left"
+                >
                   Nouveau mouvement
                 </Button>
               )}
-            </div>
-          </div>
+            </>
+          }
+        />
+
+        <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
 
           {/* Filters */}
           <MovementFilters
             onFilterChange={handleFilterChange}
             onExport={handleExport}
             totalMovements={filteredMovements?.length}
-            userRole={effectiveRole} />
+            userRole={effectiveRole}
+            locations={availableLocations} />
 
           {/* Timeline */}
           <div className="bg-surface border border-border rounded-lg">

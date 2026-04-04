@@ -7,120 +7,82 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import FilterDropdown from '../../components/ui/FilterDropdown';
 import ResponsiveGrid from '../../components/ResponsiveGrid';
 import { useAuth } from '../../contexts/AuthContext';
+import locationService from '../../services/locationService';
+import LocationModal from './components/LocationModal';
+import { userService } from '../../services/userService';
+import PageHeader from '../../components/ui/PageHeader';
+import InlineFeedback from '../../components/ui/InlineFeedback';
 
 const LocationsPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [locations, setLocations] = useState([]);
   const [filteredLocations, setFilteredLocations] = useState([]);
-  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [viewMode, setViewMode] = useState('cards');
   const [isLoading, setIsLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
+  const [error, setError] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [companyUsers, setCompanyUsers] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
     type: '',
     status: 'all'
   });
 
-  const { currentRole, currentCompany } = useAuth();
-  const userRole = currentRole || 'user';
+  // Modal state
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    mode: 'view', // 'view', 'edit', 'add'
+    location: null
+  });
 
-  // Mock locations data
-  const mockLocations = [
-    {
-      id: 'warehouse-a',
-      name: 'Entrepôt A',
-      code: 'WH-A',
-      type: 'warehouse',
-      status: 'active',
-      description: 'Entrepôt principal pour le stockage des équipements informatiques',
-      address: '123 Rue de la Logistique, 75012 Paris',
-      capacity: 5000,
-      occupancy: 3250,
-      manager: 'Marie Dubois',
-      phone: '+33 1 45 67 89 01',
-      email: 'warehouse-a@techcorp.fr',
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-10-20T14:30:00Z'
-    },
-    {
-      id: 'warehouse-b',
-      name: 'Entrepôt B',
-      code: 'WH-B',
-      type: 'warehouse',
-      status: 'active',
-      description: 'Entrepôt secondaire pour overflow et stockage saisonnier',
-      address: '456 Avenue de la Distribution, 94200 Ivry-sur-Seine',
-      capacity: 3000,
-      occupancy: 1800,
-      manager: 'Pierre Martin',
-      phone: '+33 1 45 67 89 02',
-      email: 'warehouse-b@techcorp.fr',
-      createdAt: '2024-02-10T09:30:00Z',
-      updatedAt: '2024-10-18T11:45:00Z'
-    },
-    {
-      id: 'store-front',
-      name: 'Magasin',
-      code: 'STR-01',
-      type: 'retail',
-      status: 'active',
-      description: 'Point de vente principal avec showroom et stock de démonstration',
-      address: '789 Boulevard du Commerce, 75001 Paris',
-      capacity: 800,
-      occupancy: 650,
-      manager: 'Sophie Laurent',
-      phone: '+33 1 45 67 89 03',
-      email: 'store@techcorp.fr',
-      createdAt: '2024-01-20T14:00:00Z',
-      updatedAt: '2024-10-22T16:20:00Z'
-    },
-    {
-      id: 'returns',
-      name: 'Retours',
-      code: 'RET-01',
-      type: 'processing',
-      status: 'active',
-      description: 'Centre de traitement des retours et réparations',
-      address: '321 Rue du Service, 92100 Boulogne-Billancourt',
-      capacity: 500,
-      occupancy: 180,
-      manager: 'Thomas Rousseau',
-      phone: '+33 1 45 67 89 04',
-      email: 'returns@techcorp.fr',
-      createdAt: '2024-03-05T11:15:00Z',
-      updatedAt: '2024-10-15T09:30:00Z'
-    },
-    {
-      id: 'transit-hub',
-      name: 'Hub de Transit',
-      code: 'HUB-01',
-      type: 'transit',
-      status: 'maintenance',
-      description: 'Point de transit temporaire pour expéditions inter-entrepôts',
-      address: '654 Zone Industrielle, 93400 Saint-Ouen',
-      capacity: 1200,
-      occupancy: 0,
-      manager: 'Amélie Moreau',
-      phone: '+33 1 45 67 89 05',
-      email: 'transit@techcorp.fr',
-      createdAt: '2024-04-12T13:45:00Z',
-      updatedAt: '2024-10-20T08:10:00Z'
-    }
-  ];
+  const { isAdministrator, isSuperAdmin, currentCompany } = useAuth();
+  const canEdit = isAdministrator() || isSuperAdmin();
+  const canAdd = isAdministrator() || isSuperAdmin();
 
   useEffect(() => {
-    const loadLocations = async () => {
-      setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setLocations(mockLocations);
-      setFilteredLocations(mockLocations);
-      setIsLoading(false);
+    if (currentCompany?.id) {
+      loadLocations();
+    }
+  }, [currentCompany]);
+
+  useEffect(() => {
+    const loadCompanyUsers = async () => {
+      if (!currentCompany?.id) {
+        setCompanyUsers([]);
+        return;
+      }
+      const { data } = await userService.getCompanyUsers(currentCompany.id);
+      setCompanyUsers(data || []);
     };
-    loadLocations();
-  }, []);
+    loadCompanyUsers();
+  }, [currentCompany]);
+
+  const loadLocations = async () => {
+    if (!currentCompany?.id) {
+      setError('No company selected');
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const data = await locationService.getLocations(currentCompany.id);
+      setLocations(data);
+      setFilteredLocations(data);
+    } catch (err) {
+      console.error('Error loading locations:', err);
+      setError('Failed to load locations. Please try again.');
+      setLocations([]);
+      setFilteredLocations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = [...locations];
@@ -160,12 +122,128 @@ const LocationsPage = () => {
     });
   };
 
+  const hasActiveFilters = Boolean(filters?.search || filters?.type || filters?.status !== 'all');
+
+  // Modal handlers
+  const handleAddLocation = () => {
+    setModalState({
+      isOpen: true,
+      mode: 'add',
+      location: null
+    });
+  };
+
+  const handleViewLocation = (location) => {
+    setModalState({
+      isOpen: true,
+      mode: 'view',
+      location: location
+    });
+  };
+
+  const handleEditLocation = (location) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      location: location
+    });
+  };
+
+  const handleCloseModal = () => {
+    setModalState({
+      isOpen: false,
+      mode: 'view',
+      location: null
+    });
+  };
+
+  const pushFeedback = (type, message) => {
+    setFeedback({ type, message });
+    window.setTimeout(() => {
+      setFeedback((current) => (current?.message === message ? null : current));
+    }, 3500);
+  };
+
+  const handleSaveLocation = async (formData) => {
+    if (!currentCompany?.id) {
+      throw new Error('No company selected');
+    }
+
+    try {
+      if (modalState?.mode === 'add') {
+        await locationService.createLocation(formData, currentCompany.id);
+      } else if (modalState?.mode === 'edit') {
+        await locationService.updateLocation(modalState?.location?.id, formData);
+      }
+      
+      // Reload locations to get fresh data
+      await loadLocations();
+      handleCloseModal();
+      pushFeedback('success', modalState?.mode === 'add' ? 'Emplacement ajouté avec succès.' : 'Emplacement mis à jour avec succès.');
+    } catch (err) {
+      console.error('Error saving location:', err);
+      throw err; // Re-throw to let modal handle the error display
+    }
+  };
+
+  const handleUploadLocationImage = async (locationId, file) => {
+    if (!locationId || !file) return null;
+
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('locationId', locationId);
+
+    const response = await fetch('/api/upload-location-image', { method: 'POST', body: formData });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Échec upload photo emplacement');
+    }
+
+    const updatedLocation = await locationService.getLocation(locationId);
+    await loadLocations();
+    pushFeedback('success', 'Photo emplacement ajoutée avec succès.');
+    return updatedLocation;
+  };
+
+  const handleDeleteLocation = async (locationId) => {
+    if (!currentCompany?.id) {
+      throw new Error('No company selected');
+    }
+
+    if (!isSuperAdmin() && !isAdministrator()) {
+      throw new Error('Unauthorized: Only admins can delete locations');
+    }
+
+    const locationName = modalState?.location?.name || locations.find((location) => location?.id === locationId)?.name || 'cet emplacement';
+    if (!confirm(`Supprimer ${locationName} ? Cette action est définitive.`)) {
+      return;
+    }
+
+    try {
+      await locationService.deleteLocation(locationId, currentCompany.id);
+      await loadLocations();
+      
+      // Close modal if it's open
+      if (modalState?.isOpen) {
+        handleCloseModal();
+      }
+      pushFeedback('success', 'Emplacement supprimé avec succès.');
+    } catch (err) {
+      console.error('Error deleting location:', err);
+      pushFeedback('error', err?.message || 'Échec de la suppression de l’emplacement.');
+    }
+  };
+
   const getTypeIcon = (type) => {
     switch (type) {
       case 'warehouse': return 'Warehouse';
-      case 'retail': return 'Store';
-      case 'processing': return 'Wrench';
-      case 'transit': return 'Truck';
+      case 'retail':
+      case 'showroom': return 'Store';
+      case 'processing':
+      case 'workshop': return 'Wrench';
+      case 'transit':
+      case 'truck': return 'Truck';
+      case 'external': return 'MapPinned';
       default: return 'MapPin';
     }
   };
@@ -176,6 +254,10 @@ const LocationsPage = () => {
       case 'retail': return 'Magasin';
       case 'processing': return 'Traitement';
       case 'transit': return 'Transit';
+      case 'showroom': return 'Showroom';
+      case 'workshop': return 'Atelier';
+      case 'truck': return 'Camion';
+      case 'external': return 'Externe';
       default: return type;
     }
   };
@@ -218,8 +300,8 @@ const LocationsPage = () => {
         <SidebarNavigation
           isCollapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          userRole={currentRole}
-          currentTenant={currentCompany}
+          userRole={null}
+          currentTenant={null}
         />
 
         <main className={`
@@ -228,27 +310,24 @@ const LocationsPage = () => {
           pt-16 lg:pt-0
         `}>
           {/* Header */}
-          <div className="bg-surface border-b border-border px-4 lg:px-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <div>
-                <h1 className="text-xl lg:text-2xl font-semibold text-text-primary">Emplacements</h1>
-                <p className="text-text-muted mt-1 text-sm lg:text-base">
-                  Gérez vos entrepôts, magasins et points de stockage
-                </p>
-              </div>
-              <div className="flex items-center space-x-3">
+          <PageHeader
+            title="Emplacements"
+            subtitle="Gérez vos entrepôts, magasins et points de stockage"
+            actions={
+              <>
                 <Button
                   variant="outline"
                   size="sm"
-                  iconName="Download"
+                  iconName="QrCode"
                   iconPosition="left"
                   className="text-xs lg:text-sm"
+                  onClick={() => window.location.href = '/qr-scanner'}
                 >
-                  Exporter
+                  Scanner QR
                 </Button>
-                {['super_admin', 'administrator']?.includes(userRole) && (
+                {canAdd && (
                   <Button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={handleAddLocation}
                     iconName="Plus"
                     iconPosition="left"
                     size="sm"
@@ -257,55 +336,143 @@ const LocationsPage = () => {
                     Nouvel emplacement
                   </Button>
                 )}
-              </div>
-            </div>
-          </div>
+              </>
+            }
+          />
 
           {/* Content */}
           <div className="p-4 lg:p-6 space-y-6">
-            {/* Filters */}
-            <div className="bg-surface border border-border rounded-lg p-4 lg:p-6">
-              <h3 className="text-sm lg:text-base font-medium text-text-primary mb-4">Filtres</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Input
-                  placeholder="Rechercher..."
-                  value={filters?.search}
-                  onChange={(e) => handleFilterChange('search', e?.target?.value)}
-                  iconName="Search"
-                  className="text-sm"
-                />
-                
-                <Select
-                  value={filters?.type}
-                  onValueChange={(value) => handleFilterChange('type', value)}
-                  placeholder="Type d'emplacement"
-                >
-                  <option value="">Tous les types</option>
-                  <option value="warehouse">Entrepôt</option>
-                  <option value="retail">Magasin</option>
-                  <option value="processing">Traitement</option>
-                  <option value="transit">Transit</option>
-                </Select>
+            {feedback && <InlineFeedback type={feedback.type} message={feedback.message} />}
+            {/* Error Message */}
+            {error && (
+              <div className="bg-error/10 border border-error/20 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-error">
+                  <Icon name="AlertCircle" size={20} />
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
 
-                <Select
-                  value={filters?.status}
-                  onValueChange={(value) => handleFilterChange('status', value)}
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="active">Actif</option>
-                  <option value="maintenance">Maintenance</option>
-                  <option value="inactive">Inactif</option>
-                </Select>
+            {/* Filter Bar */}
+            <div className="space-y-4 rounded-2xl border border-border bg-surface p-4 lg:p-5 shadow-sm">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="w-full xl:max-w-xl">
+                  <Input
+                    placeholder="Rechercher un emplacement, code ou adresse..."
+                    value={filters?.search}
+                    onChange={(e) => handleFilterChange('search', e?.target?.value)}
+                    iconName="Search"
+                    className="text-sm"
+                  />
+                </div>
 
-                <Button
-                  variant="outline"
-                  onClick={handleClearFilters}
-                  iconName="X"
-                  iconPosition="left"
-                  className="text-sm"
-                >
-                  Effacer
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <FilterDropdown
+                    label="Type"
+                    value={filters?.type}
+                    onChange={(value) => handleFilterChange('type', value || '')}
+                    placeholder="Type"
+                    buttonIcon="MapPin"
+                    className="w-full md:min-w-[180px] md:w-auto"
+                    options={[
+                      { value: 'warehouse', label: 'Entrepôt' },
+                      { value: 'retail', label: 'Magasin' },
+                      { value: 'processing', label: 'Traitement' },
+                      { value: 'transit', label: 'Transit' },
+                      { value: 'showroom', label: 'Showroom' },
+                      { value: 'workshop', label: 'Atelier' },
+                      { value: 'truck', label: 'Camion' },
+                      { value: 'external', label: 'Externe' },
+                    ]}
+                  />
+
+                  <FilterDropdown
+                    label="Statut"
+                    value={filters?.status === 'all' ? '' : filters?.status}
+                    onChange={(value) => handleFilterChange('status', value || 'all')}
+                    className="w-full md:min-w-[170px] md:w-auto"
+                    options={[
+                      { value: 'active', label: 'Actif' },
+                      { value: 'maintenance', label: 'Maintenance' },
+                      { value: 'inactive', label: 'Inactif' },
+                    ]}
+                  />
+
+                  <div className="flex items-center bg-muted rounded-xl p-1 border border-border">
+                    <Button
+                      variant={viewMode === 'table' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('table')}
+                      className="h-9 w-9 p-0 rounded-lg"
+                      title="Vue tableau"
+                    >
+                      <Icon name="Table" size={16} />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('cards')}
+                      className="h-9 w-9 p-0 rounded-lg"
+                      title="Vue cartes"
+                    >
+                      <Icon name="LayoutGrid" size={16} />
+                    </Button>
+                  </div>
+
+                  {hasActiveFilters && (
+                    <Button
+                      variant="outline"
+                      onClick={handleClearFilters}
+                      iconName="RotateCcw"
+                      iconPosition="left"
+                      className="text-sm rounded-xl"
+                    >
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-sm text-text-muted">
+                  {filteredLocations?.length} emplacement{filteredLocations?.length > 1 ? 's' : ''}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {filters?.search && (
+                    <button
+                      type="button"
+                      onClick={() => handleFilterChange('search', '')}
+                      className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                    >
+                      <Icon name="Search" size={12} />
+                      <span>{filters.search}</span>
+                      <Icon name="X" size={12} />
+                    </button>
+                  )}
+
+                  {filters?.type && (
+                    <button
+                      type="button"
+                      onClick={() => handleFilterChange('type', '')}
+                      className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-text-primary border border-border"
+                    >
+                      <span>Type : {getTypeLabel(filters.type)}</span>
+                      <Icon name="X" size={12} />
+                    </button>
+                  )}
+
+                  {filters?.status !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => handleFilterChange('status', 'all')}
+                      className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-text-primary border border-border"
+                    >
+                      <span>Statut : {getStatusLabel(filters.status)}</span>
+                      <Icon name="X" size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -314,10 +481,84 @@ const LocationsPage = () => {
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
+            ) : viewMode === 'table' ? (
+              <div className="bg-surface border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Nom</th>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Code</th>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Type</th>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Statut</th>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Occupation</th>
+                        <th className="text-left p-4 text-sm font-medium text-text-secondary">Responsable</th>
+                        <th className="text-right p-4 text-sm font-medium text-text-secondary">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLocations?.map((location) => (
+                        <tr
+                          key={location?.id}
+                          className="border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer"
+                          onClick={() => handleViewLocation(location)}
+                        >
+                          <td className="p-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <Icon name={getTypeIcon(location?.type)} size={18} className="text-primary" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-text-primary">{location?.name}</div>
+                                <div className="text-xs text-text-muted truncate max-w-[220px]">{location?.address}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-sm text-text-muted">{location?.code || '—'}</td>
+                          <td className="p-4 text-sm text-text-primary">{getTypeLabel(location?.type)}</td>
+                          <td className="p-4">
+                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(location?.status)} bg-current/10`}>
+                              {getStatusLabel(location?.status)}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-text-primary">
+                            {location?.capacity?.toLocaleString() || '—'}
+                          </td>
+                          <td className="p-4 text-sm text-text-muted">{location?.manager || '—'}</td>
+                          <td className="p-4">
+                            <div className="flex items-center justify-end space-x-1" onClick={(e) => e.stopPropagation()}>
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditLocation(location)}
+                                  iconName="Edit"
+                                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary"
+                                />
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewLocation(location)}
+                                iconName="Eye"
+                                className="h-8 w-8 p-0 text-text-muted hover:text-text-primary"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             ) : (
               <ResponsiveGrid cols="1 lg:2 xl:3" gap="4 lg:6">
                 {filteredLocations?.map((location) => (
-                  <div key={location?.id} className="bg-card border border-border rounded-lg p-4 lg:p-6 card-shadow hover:shadow-lg transition-shadow">
+                  <div 
+                    key={location?.id} 
+                    className="bg-card border border-border rounded-lg p-4 lg:p-6 card-shadow hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => handleViewLocation(location)}
+                  >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -339,22 +580,11 @@ const LocationsPage = () => {
                         <span className="text-text-primary font-medium">{getTypeLabel(location?.type)}</span>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs lg:text-sm">
-                          <span className="text-text-muted">Occupation</span>
-                          <span className="text-text-primary font-medium">
-                            {location?.occupancy?.toLocaleString()} / {location?.capacity?.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all ${getOccupancyColor(getOccupancyPercentage(location?.occupancy, location?.capacity))}`}
-                            style={{ width: `${getOccupancyPercentage(location?.occupancy, location?.capacity)}%` }}
-                          />
-                        </div>
-                        <div className="text-xs text-text-muted text-right">
-                          {getOccupancyPercentage(location?.occupancy, location?.capacity)}% utilisé
-                        </div>
+                      <div className="flex items-center justify-between text-xs lg:text-sm">
+                        <span className="text-text-muted">Capacité</span>
+                        <span className="text-text-primary font-medium">
+                          {location?.capacity?.toLocaleString() || '—'}
+                        </span>
                       </div>
 
                       <div className="pt-2 border-t border-border">
@@ -368,18 +598,25 @@ const LocationsPage = () => {
                             <Icon name="User" size={12} />
                             <span>{location?.manager}</span>
                           </div>
-                          {['super_admin', 'administrator']?.includes(userRole) && (
+                          {canEdit && (
                             <div className="flex items-center space-x-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEditingLocation(location)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditLocation(location);
+                                }}
                                 iconName="Edit"
                                 className="h-6 w-6 p-0 text-text-muted hover:text-text-primary"
                               />
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewLocation(location);
+                                }}
                                 iconName="Eye"
                                 className="h-6 w-6 p-0 text-text-muted hover:text-text-primary"
                               />
@@ -397,17 +634,33 @@ const LocationsPage = () => {
               <div className="text-center py-12">
                 <Icon name="MapPin" size={48} className="text-text-muted mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-text-primary mb-2">
-                  Aucun emplacement trouvé
+                  {error ? 'Erreur de chargement' : 'Aucun emplacement trouvé'}
                 </h3>
                 <p className="text-text-muted">
-                  Aucun emplacement ne correspond aux critères de recherche actuels.
+                  {error 
+                    ? 'Veuillez vérifier votre connexion et réessayer.'
+                    : 'Aucun emplacement ne correspond aux critères de recherche actuels.'}
                 </p>
               </div>
             )}
           </div>
         </main>
 
-        <QuickActionBar variant="floating" userRole={currentRole} />
+        <QuickActionBar variant="floating" userRole={null} />
+
+        {/* Location Modal */}
+        <LocationModal
+          isOpen={modalState?.isOpen}
+          onClose={handleCloseModal}
+          location={modalState?.location}
+          mode={modalState?.mode}
+          onSave={handleSaveLocation}
+          onDelete={handleDeleteLocation}
+          onUploadImage={handleUploadLocationImage}
+          companyUsers={companyUsers}
+          canEdit={canEdit}
+          isSuperAdmin={isSuperAdmin()}
+        />
       </div>
     </>
   );

@@ -9,186 +9,134 @@ import StockAlertsList from './components/StockAlertsList';
 import QuickStatsCard from './components/QuickStatsCard';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import PageHeader from '../../components/ui/PageHeader';
+import productService from '../../services/productService';
+import useCompanySettings from '../../hooks/useCompanySettings';
 
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const { currentRole, currentCompany } = useAuth();
-  const navigate = useNavigate();
-
-  // Mock data for KPI widgets
-  const kpiData = [
+  const [kpiData, setKpiData] = useState([
     {
       title: 'Total Produits',
-      value: '2,847',
+      value: '0',
       trend: 'up',
-      trendValue: '+12%',
+      trendValue: '—',
       icon: 'Package',
       color: 'primary'
     },
     {
       title: 'Articles en Stock',
-      value: '2,634',
+      value: '0',
       trend: 'up',
-      trendValue: '+8%',
+      trendValue: '—',
       icon: 'CheckCircle',
       color: 'success'
     },
     {
       title: 'Alertes de Stock',
-      value: '23',
+      value: '0',
       trend: 'down',
-      trendValue: '-5%',
+      trendValue: '—',
       icon: 'AlertTriangle',
       color: 'warning'
     }
-  ];
+  ]);
+  const navigate = useNavigate();
+  const { settings: companySettings } = useCompanySettings();
+  const dashboardVisibility = companySettings?.dashboardVisibility || {}; 
 
-  // Mock recent activities
-  const recentActivities = [
-    {
-      id: 1,
-      type: 'stock_in',
-      title: 'Réception de marchandises',
-      description: 'Ajout de 150 unités - Smartphone Galaxy S24',
-      user: 'Marie Dubois',
-      timestamp: new Date(Date.now() - 300000) // 5 minutes ago
-    },
-    {
-      id: 2,
-      type: 'scan',
-      title: 'Scan QR effectué',
-      description: 'Vérification stock - Ordinateur portable Dell XPS',
-      user: 'Pierre Martin',
-      timestamp: new Date(Date.now() - 900000) // 15 minutes ago
-    },
-    {
-      id: 3,
-      type: 'stock_out',
-      title: 'Sortie de stock',
-      description: 'Expédition de 25 unités - Casque audio Sony WH-1000XM4',
-      user: 'Sophie Laurent',
-      timestamp: new Date(Date.now() - 1800000) // 30 minutes ago
-    },
-    {
-      id: 4,
-      type: 'product_added',
-      title: 'Nouveau produit ajouté',
-      description: 'Tablette iPad Pro 12.9" - Référence: IPD-PRO-129',
-      user: 'Jean Dupont',
-      timestamp: new Date(Date.now() - 3600000) // 1 hour ago
-    },
-    {
-      id: 5,
-      type: 'adjustment',
-      title: 'Ajustement d\'inventaire',
-      description: 'Correction stock - Écouteurs AirPods Pro (différence: -3)',
-      user: 'Marie Dubois',
-      timestamp: new Date(Date.now() - 7200000) // 2 hours ago
-    }
-  ];
+  // KPI are now loaded from Supabase (real data)
 
-  // Mock system notifications
-  const systemNotifications = [
-    {
-      id: 1,
-      type: 'alert',
-      title: 'Stock faible détecté',
-      description: 'Le produit "Chargeur USB-C" est en dessous du seuil minimum (5 unités restantes)',
-      timestamp: new Date(Date.now() - 600000) // 10 minutes ago
-    },
-    {
-      id: 2,
-      type: 'user_login',
-      title: 'Nouvelle connexion',
-      description: 'Pierre Martin s\'est connecté depuis l\'entrepôt principal',
-      timestamp: new Date(Date.now() - 1200000) // 20 minutes ago
-    },
-    {
-      id: 3,
-      type: 'alert',
-      title: 'Rupture de stock',
-      description: 'Le produit "Souris Logitech MX Master 3" n\'est plus disponible',
-      timestamp: new Date(Date.now() - 2400000) // 40 minutes ago
-    },
-    {
-      id: 4,
-      type: 'scan',
-      title: 'Scan automatique programmé',
-      description: 'Vérification hebdomadaire des stocks - Secteur A terminée',
-      timestamp: new Date(Date.now() - 10800000) // 3 hours ago
-    }
-  ];
-
-  // Mock stock alerts
-  const stockAlerts = [
-    {
-      id: 1,
-      productName: 'Chargeur USB-C Rapide',
-      sku: 'CHG-USBC-001',
-      currentStock: 5,
-      minStock: 20,
-      location: 'Entrepôt A - Zone 3'
-    },
-    {
-      id: 2,
-      productName: 'Souris Logitech MX Master 3',
-      sku: 'SOU-LOG-MX3',
-      currentStock: 0,
-      minStock: 15,
-      location: 'Entrepôt B - Zone 1'
-    },
-    {
-      id: 3,
-      productName: 'Clavier Mécanique RGB',
-      sku: 'CLV-MEC-RGB',
-      currentStock: 8,
-      minStock: 25,
-      location: 'Entrepôt A - Zone 2'
-    },
-    {
-      id: 4,
-      productName: 'Webcam HD 1080p',
-      sku: 'WEB-HD-1080',
-      currentStock: 3,
-      minStock: 12,
-      location: 'Entrepôt C - Zone 1'
-    }
-  ];
-
-  // Mock quick stats
-  const quickStats = [
-    {
-      label: 'Mouvements aujourd\'hui',
-      value: '47',
-      icon: 'ArrowUpDown'
-    },
-    {
-      label: 'Scans QR',
-      value: '128',
-      icon: 'QrCode'
-    },
-    {
-      label: 'Utilisateurs actifs',
-      value: '12',
-      icon: 'Users'
-    },
-    {
-      label: 'Valeur totale',
-      value: '€284K',
-      unit: '',
-      icon: 'Euro'
-    }
-  ];
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [stockAlerts, setStockAlerts] = useState([]);
+  const [quickStats, setQuickStats] = useState([]);
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    const loadDashboardData = async () => {
+      if (!currentCompany?.id) {
+        setLoading(false);
+        return;
+      }
 
-    return () => clearTimeout(timer);
-  }, []);
+      try {
+        setLoading(true);
+        const stats = await productService.getProductStats(currentCompany.id);
+        const products = await productService.getProducts(currentCompany.id);
+
+        const totalProducts = Number(stats?.totalProducts || 0);
+        const totalQuantity = Number(stats?.totalQuantity || 0);
+        const lowStockCount = Number(stats?.lowStockCount || 0);
+
+        setKpiData([
+          {
+            title: 'Total Produits',
+            value: String(totalProducts),
+            trend: 'up',
+            trendValue: 'Données réelles',
+            icon: 'Package',
+            color: 'primary'
+          },
+          {
+            title: 'Articles en Stock',
+            value: String(totalQuantity),
+            trend: 'up',
+            trendValue: 'Données réelles',
+            icon: 'CheckCircle',
+            color: 'success'
+          },
+          {
+            title: 'Alertes de Stock',
+            value: String(lowStockCount),
+            trend: lowStockCount > 0 ? 'down' : 'up',
+            trendValue: 'Données réelles',
+            icon: 'AlertTriangle',
+            color: 'warning'
+          }
+        ]);
+
+        const alerts = products
+          .filter((p) => (p?.status === 'low_stock' || p?.status === 'out_of_stock' || Number(p?.quantity || 0) <= Number(p?.min_stock || 0)))
+          .slice(0, 5)
+          .map((p) => ({
+            id: p?.id,
+            productName: p?.name,
+            sku: p?.sku,
+            currentStock: Number(p?.quantity || 0),
+            minStock: Number(p?.min_stock || 0),
+            location: p?.location || p?.product_location || 'N/A'
+          }));
+        setStockAlerts(alerts);
+
+        const activities = products
+          .slice(0, 5)
+          .map((p) => ({
+            id: p?.id,
+            type: 'product_added',
+            title: 'Produit disponible',
+            description: `${p?.name} (${p?.sku || 'N/A'})`,
+            user: 'Système',
+            timestamp: p?.updated_at || p?.created_at || new Date().toISOString()
+          }));
+        setRecentActivities(activities);
+
+        const inventoryValue = products.reduce((acc, p) => acc + (Number(p?.quantity || 0) * Number(p?.price || 0)), 0);
+        setQuickStats([
+          { label: 'Produits actifs', value: String(totalProducts), icon: 'Package' },
+          { label: 'Articles en stock', value: String(totalQuantity), icon: 'Archive' },
+          { label: 'Alertes stock', value: String(lowStockCount), icon: 'AlertTriangle' },
+          { label: 'Valeur stock', value: `€${Math.round(inventoryValue).toLocaleString('fr-FR')}`, unit: '', icon: 'Euro' }
+        ]);
+      } catch (error) {
+        console.error('Error loading dashboard KPI:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [currentCompany?.id]);
 
   const handleKPIClick = (index) => {
     switch (index) {
@@ -215,63 +163,63 @@ const Dashboard = () => {
         currentTenant={currentCompany}
       />
       <main className={`transition-all duration-200 ${isCollapsed ? 'lg:ml-16' : 'lg:ml-72'} pt-14 sm:pt-16 lg:pt-0`}>
-        {/* Enhanced Header with better mobile responsiveness */}
-        <div className="bg-surface border-b border-border px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Tableau de Bord</h1>
-              <p className="text-text-muted mt-1 text-sm sm:text-base">
-                Vue d'ensemble de votre inventaire - {new Date()?.toLocaleDateString('fr-FR', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+        <PageHeader
+          title="Tableau de bord"
+          subtitle={`Vue d'ensemble de votre inventaire — ${new Date()?.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}`}
+          actions={
+            <>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => navigate('/qr-scanner')}
                 iconName="QrCode"
                 iconPosition="left"
-                className="touch-target"
+                className="text-xs lg:text-sm"
               >
-                <span className="hidden sm:inline">Scanner QR</span>
-                <span className="sm:hidden">Scanner</span>
+                Scanner QR
               </Button>
               <Button
-                variant="default"
+                size="sm"
                 onClick={() => navigate('/products?action=add')}
                 iconName="Plus"
                 iconPosition="left"
-                className="touch-target"
+                className="text-xs lg:text-sm"
               >
-                <span className="hidden sm:inline">Ajouter Produit</span>
-                <span className="sm:hidden">Ajouter</span>
+                Ajouter produit
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {/* Enhanced Content with responsive spacing */}
         <div className="container-responsive py-4 sm:py-6 space-responsive-y">
           {/* Enhanced KPI Widgets with responsive grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {kpiData?.map((kpi, index) => (
-              <KPIWidget
-                key={index}
-                title={kpi?.title}
-                value={kpi?.value}
-                trend={kpi?.trend}
-                trendValue={kpi?.trendValue}
-                icon={kpi?.icon}
-                color={kpi?.color}
-                onClick={() => handleKPIClick(index)}
-                loading={loading}
-              />
-            ))}
+            {kpiData?.filter((_, index) => {
+              if (index === 0) return dashboardVisibility?.totalProducts !== false;
+              if (index === 2) return dashboardVisibility?.stockAlerts !== false;
+              return true;
+            })?.map((kpi) => {
+              const originalIndex = kpiData.findIndex((x) => x.title === kpi.title);
+              return (
+                <KPIWidget
+                  key={kpi?.title}
+                  title={kpi?.title}
+                  value={kpi?.value}
+                  trend={kpi?.trend}
+                  trendValue={kpi?.trendValue}
+                  icon={kpi?.icon}
+                  color={kpi?.color}
+                  onClick={() => handleKPIClick(originalIndex)}
+                  loading={loading}
+                />
+              );
+            })}
           </div>
 
           {/* Enhanced Quick Actions with responsive design */}
@@ -286,35 +234,41 @@ const Dashboard = () => {
           {/* Enhanced Activity and Alerts Grid with responsive layout */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
             {/* Recent Activities */}
-            <ActivityTimeline
-              title="Activités Récentes"
-              activities={recentActivities}
-              onViewAll={() => navigate('/stock-movements')}
-              loading={loading}
-            />
+            {dashboardVisibility?.recentMovements !== false && (
+              <ActivityTimeline
+                title="Activités Récentes"
+                activities={recentActivities}
+                onViewAll={() => navigate('/stock-movements')}
+                loading={loading}
+              />
+            )}
 
             {/* Stock Alerts */}
-            <StockAlertsList
-              alerts={stockAlerts}
-              onViewAll={() => navigate('/products?filter=alerts')}
-              loading={loading}
-            />
+            {dashboardVisibility?.stockAlerts !== false && (
+              <StockAlertsList
+                alerts={stockAlerts}
+                onViewAll={() => navigate('/products?filter=alerts')}
+                loading={loading}
+              />
+            )}
           </div>
 
           {/* Enhanced Bottom Grid with responsive columns */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Quick Stats */}
-            <QuickStatsCard
-              title="Statistiques Rapides"
-              stats={quickStats}
-              loading={loading}
-            />
+            {dashboardVisibility?.lowStockItems !== false && (
+              <QuickStatsCard
+                title="Statistiques Rapides"
+                stats={quickStats}
+                loading={loading}
+              />
+            )}
 
             {/* System Notifications */}
             <div className="lg:col-span-2">
               <ActivityTimeline
                 title="Notifications Système"
-                activities={systemNotifications}
+                activities={recentActivities}
                 onViewAll={() => navigate('/settings')}
                 loading={loading}
               />

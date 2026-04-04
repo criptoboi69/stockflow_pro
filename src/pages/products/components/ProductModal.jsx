@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
@@ -6,16 +7,22 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import QRCodeGenerator from './QRCodeGenerator';
-import ImageUpload from '../../../components/ui/ImageUpload';
 import storageService from '../../../services/storageService';
+import locationService from '../../../services/locationService';
+import categoryService from '../../../services/categoryService';
+import productService from '../../../services/productService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ProductModal = ({ 
   isOpen, 
   onClose, 
   product = null, 
   mode = 'view', // 'view', 'edit', 'add'
-  onSave 
+  onSave,
+  onDelete,
+  canDelete = false
 }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -26,28 +33,67 @@ const ProductModal = ({
     price: '',
     imageUrl: '',
     imageFilePath: '',
+    imageUrls: [],
+    imageFilePaths: [],
+    qrCode: '',
     minStock: 10
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadDebug, setUploadDebug] = useState('');
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [pendingImageFiles, setPendingImageFiles] = useState([]);
+  const [pendingImagePreviews, setPendingImagePreviews] = useState([]);
+  const [isMobileClient, setIsMobileClient] = useState(false);
 
-  const categoryOptions = [
-    { value: 'electronics', label: 'Électronique' },
-    { value: 'clothing', label: 'Vêtements' },
-    { value: 'books', label: 'Livres' },
-    { value: 'home_garden', label: 'Maison & Jardin' },
-    { value: 'sports', label: 'Sports & Loisirs' },
-    { value: 'beauty', label: 'Beauté & Santé' }
-  ];
+  const [categories, setCategories] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const { currentCompany } = useAuth();
 
-  const locationOptions = [
-    { value: 'warehouse_a', label: 'Entrepôt A' },
-    { value: 'warehouse_b', label: 'Entrepôt B' },
-    { value: 'store_front', label: 'Magasin principal' },
-    { value: 'storage_room', label: 'Réserve' }
-  ];
+  useEffect(() => {
+    setIsMobileClient(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
+  }, []);
+
+  useEffect(() => {
+    const loadMetadata = async () => {
+      if (!currentCompany?.id) return;
+      try {
+        const [categoryData, locationData] = await Promise.all([
+          categoryService.getCategories(currentCompany.id),
+          locationService.getLocations(currentCompany.id)
+        ]);
+        setCategories(categoryData || []);
+        setLocations(locationData || []);
+      } catch (error) {
+        console.error('Error loading product metadata:', error);
+        setCategories([]);
+        setLocations([]);
+      }
+    };
+
+    loadMetadata();
+  }, [currentCompany?.id]);
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category?.name || '',
+        label: category?.name || ''
+      })),
+    [categories]
+  );
+
+  const locationOptions = useMemo(
+    () =>
+      locations.map((location) => ({
+        value: location?.name || '',
+        label: location?.code ? `${location.name} (${location.code})` : location?.name || '',
+      })),
+    [locations],
+  );
+
 
   useEffect(() => {
     if (product && (mode === 'view' || mode === 'edit')) {
@@ -61,6 +107,9 @@ const ProductModal = ({
         price: product?.price || '',
         imageUrl: product?.imageUrl || '',
         imageFilePath: product?.imageFilePath || '',
+        imageUrls: product?.imageUrls || (product?.imageUrl ? [product?.imageUrl] : []),
+        imageFilePaths: product?.imageFilePaths || (product?.imageFilePath ? [product?.imageFilePath] : []),
+        qrCode: product?.qrCode || '',
         minStock: product?.minStock || 10
       });
     } else if (mode === 'add') {
@@ -74,9 +123,14 @@ const ProductModal = ({
         price: '',
         imageUrl: '',
         imageFilePath: '',
+        imageUrls: [],
+        imageFilePaths: [],
+        qrCode: '',
         minStock: 10
       });
     }
+    setPendingImageFiles([]);
+    setPendingImagePreviews([]);
     setErrors({});
   }, [product, mode, isOpen]);
 
@@ -145,13 +199,74 @@ const ProductModal = ({
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    // In edit mode, images are now persisted immediately on upload.
+    // So we should not block save with the old generic upload warning.
+    if (uploadingImage && mode !== 'edit') {
+      setErrors(prev => ({ ...prev, imageUrl: 'Upload image encore en cours (vous pouvez réessayer dans quelques secondes).' }));
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await onSave(formData);
+      console.log('[product-modal] handleSave start', {
+        pendingImageFiles: pendingImageFiles.length,
+        existingImages: (formData?.imageUrls || []).length,
+        productId: product?.id || null
+      });
+      setUploadDebug(`handleSave start | pending=${pendingImageFiles.length} | existing=${(formData?.imageUrls || []).length}`);
+      let nextFormData = { ...formData };
+
+      if (pendingImageFiles.length > 0) {
+        setUploadingImage(true);
+        const productId = product?.id || `temp_${Date.now()}`;
+        const uploaded = [];
+        setUploadDebug(`Upload démarré (${pendingImageFiles.length} image(s))...`);
+        for (const file of pendingImageFiles) {
+          setUploadDebug(`Avant uploadWithTimeout | ${file?.name || 'image'} | ${Math.round((file?.size || 0) / 1024)} KB`);
+          console.log('[product-modal] before uploadWithTimeout', {
+            name: file?.name,
+            size: file?.size,
+            type: file?.type,
+            productId
+          });
+          const { publicUrl, filePath } = await uploadWithTimeout(file, productId, 45000);
+          console.log('[product-modal] after uploadWithTimeout', { publicUrl, filePath });
+          setUploadDebug(`Après uploadWithTimeout | reçu=${publicUrl ? 'oui' : 'non'}`);
+          if (publicUrl) uploaded.push({ publicUrl, filePath });
+        }
+        setUploadDebug(`Upload terminé: ${uploaded.length} image(s) envoyée(s).`);
+        const existingUrls = Array.isArray(nextFormData?.imageUrls) ? nextFormData.imageUrls : [];
+        const existingPaths = Array.isArray(nextFormData?.imageFilePaths) ? nextFormData.imageFilePaths : [];
+        const nextUrls = [...existingUrls, ...uploaded.map(i => i.publicUrl)].slice(0, 5);
+        const nextPaths = [...existingPaths, ...uploaded.map(i => i.filePath)].slice(0, 5);
+        nextFormData = {
+          ...nextFormData,
+          imageUrl: nextUrls?.[0] || '',
+          imageFilePath: nextPaths?.[0] || '',
+          imageUrls: nextUrls,
+          imageFilePaths: nextPaths
+        };
+      }
+
+      if (mode === 'edit' && product?.id) {
+        setUploadDebug('Sauvegarde directe du produit...');
+        await productService.updateProduct(product.id, nextFormData);
+        setUploadDebug('Produit enregistré avec succès.');
+        onClose();
+        setTimeout(() => window.location.reload(), 150);
+        return;
+      }
+
+      await onSave(nextFormData);
       onClose();
     } catch (error) {
       console.error('Error saving product:', error);
+      setErrors(prev => ({
+        ...prev,
+        submit: error?.message || 'Échec de l\'enregistrement du produit'
+      }));
     } finally {
+      setUploadingImage(false);
       setIsLoading(false);
     }
   };
@@ -184,51 +299,200 @@ const ProductModal = ({
     }
   };
 
-  const handleQRGenerated = (qrData, qrConfig) => {
-    setShowQRGenerator(false);
+  const handleQRGenerated = async (qrData, qrConfig) => {
+    try {
+      if (product?.id) {
+        await productService.updateProduct(product.id, { qrCode: qrData });
+      }
+      setFormData((prev) => ({
+        ...prev,
+        qrCode: qrData
+      }));
+      setShowQRGenerator(false);
+    } catch (error) {
+      console.error('Error saving QR code from modal:', error);
+      setErrors((prev) => ({ ...prev, submit: error?.message || "Échec de l'enregistrement du QR code" }));
+    }
   };
 
-  const handleImageUpload = async (file) => {
+  const handleDeleteProduct = async () => {
+    if (!product?.id || !onDelete || !canDelete) return;
+    const ok = window.confirm('Supprimer ce produit ? Cette action est irréversible.');
+    if (!ok) return;
+
+    try {
+      setIsLoading(true);
+      await onDelete(product?.id, formData?.imageFilePath || product?.imageFilePath || null);
+      onClose();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      setErrors(prev => ({ ...prev, submit: error?.message || 'Échec de la suppression du produit' }));
+    } finally {
+      setUploadingImage(false);
+      setIsLoading(false);
+    }
+  };
+
+  const uploadWithTimeout = async (file, productId, timeoutMs = 45000) => {
+    return Promise.race([
+      storageService?.uploadProductImage(file, productId),
+      new Promise((_, reject) => setTimeout(() => {
+        setUploadDebug(`Timeout après ${Math.round(timeoutMs / 1000)}s sur ${file?.name || 'image'}`);
+        reject(new Error('Timeout upload image'));
+      }, timeoutMs))
+    ]);
+  };
+
+  const persistUploadedFilesToProduct = async (files) => {
+    if (!product?.id || mode !== 'edit' || !files?.length) return false;
+
     setUploadingImage(true);
     try {
-      const productId = product?.id || `temp_${Date.now()}`;
-      
-      const { publicUrl, filePath } = await storageService?.uploadProductImage(file, productId);
-      
-      setFormData(prev => ({
-        ...prev,
-        imageUrl: publicUrl,
-        imageFilePath: filePath
-      }));
-      
-      if (errors?.imageUrl) {
-        setErrors(prev => ({ ...prev, imageUrl: '' }));
+      const uploaded = [];
+      for (const file of files) {
+        setUploadDebug(`Upload direct produit: ${file?.name || 'image'}...`);
+        const { publicUrl, filePath } = await uploadWithTimeout(file, product.id, 45000);
+        if (publicUrl) uploaded.push({ publicUrl, filePath });
       }
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        imageUrl: 'Échec du téléchargement de l\'image. Veuillez réessayer.' 
+
+      if (!uploaded.length) return false;
+
+      const existingUrls = Array.isArray(formData?.imageUrls) ? formData.imageUrls : [];
+      const existingPaths = Array.isArray(formData?.imageFilePaths) ? formData.imageFilePaths : [];
+      const nextUrls = [...existingUrls, ...uploaded.map((i) => i.publicUrl)].slice(0, 5);
+      const nextPaths = [...existingPaths, ...uploaded.map((i) => i.filePath)].slice(0, 5);
+
+      await productService.updateProduct(product.id, {
+        imageUrl: nextUrls?.[0] || '',
+        imageFilePath: nextPaths?.[0] || '',
+        imageUrls: nextUrls,
+        imageFilePaths: nextPaths
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: nextUrls?.[0] || '',
+        imageFilePath: nextPaths?.[0] || '',
+        imageUrls: nextUrls,
+        imageFilePaths: nextPaths
       }));
+      setUploadDebug(`Image(s) enregistrée(s) immédiatement sur le produit.`);
+      return true;
+    } catch (error) {
+      console.error('Direct product image persistence failed:', error);
+      setErrors((prev) => ({ ...prev, imageUrl: error?.message || "Échec du téléchargement de l'image." }));
+      throw error;
     } finally {
       setUploadingImage(false);
     }
   };
 
+  const handleImageUpload = async (file) => {
+    try {
+      setErrors(prev => ({ ...prev, imageUrl: '' }));
+      setUploadDebug(`Fichier ajouté localement: ${file?.name || 'image'} (${Math.round((file?.size || 0) / 1024)} KB)`);
+      const currentCount = [...(formData?.imageUrls || []), ...pendingImagePreviews].filter(Boolean).length;
+      if (currentCount >= 5) return;
+
+      if (mode === 'edit' && product?.id) {
+        await persistUploadedFilesToProduct([file]);
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      setPendingImageFiles(prev => [...prev, file].slice(0, 5));
+      setPendingImagePreviews(prev => [...prev, previewUrl].slice(0, 5));
+    } catch (error) {
+      console.error('Image local add failed:', error);
+      setErrors(prev => ({ ...prev, imageUrl: error?.message || "Impossible d'ajouter la photo." }));
+      throw error;
+    }
+  };
+
   const handleImageRemove = async () => {
+    const ok = window.confirm('Supprimer cette photo ? Cette action est irréversible.');
+    if (!ok) return;
+
     try {
       if (formData?.imageFilePath) {
         await storageService?.deleteProductImage(formData?.imageFilePath);
       }
-      
-      setFormData(prev => ({
-        ...prev,
-        imageUrl: '',
-        imageFilePath: ''
-      }));
+
+      setFormData(prev => {
+        const nextUrls = (prev?.imageUrls || []).slice(1);
+        const nextPaths = (prev?.imageFilePaths || []).slice(1);
+        return {
+          ...prev,
+          imageUrl: nextUrls?.[0] || '',
+          imageFilePath: nextPaths?.[0] || '',
+          imageUrls: nextUrls,
+          imageFilePaths: nextPaths
+        };
+      });
     } catch (error) {
       console.error('Image removal failed:', error);
     }
+  };
+
+
+  const handleAdditionalImagesUpload = async (event) => {
+    const files = Array.from(event?.target?.files || []);
+    if (!files?.length) return;
+
+    try {
+      setErrors(prev => ({ ...prev, imageUrl: '' }));
+      const currentCount = [...(formData?.imageUrls || []), ...pendingImagePreviews].filter(Boolean).length;
+      const freeSlots = Math.max(0, 5 - currentCount);
+      const accepted = files.slice(0, freeSlots);
+
+      if (mode === 'edit' && product?.id) {
+        await persistUploadedFilesToProduct(accepted);
+        return;
+      }
+
+      const previews = accepted.map((file) => URL.createObjectURL(file));
+      setPendingImageFiles(prev => [...prev, ...accepted].slice(0, 5));
+      setPendingImagePreviews(prev => [...prev, ...previews].slice(0, 5));
+    } catch (error) {
+      console.error('Additional images local add failed:', error);
+      setErrors(prev => ({ ...prev, imageUrl: error?.message || "Impossible d'ajouter les photos." }));
+      throw error;
+    } finally {
+      if (event?.target) event.target.value = '';
+    }
+  };
+
+  const handleRemoveAdditionalImage = async (index) => {
+    const ok = window.confirm('Supprimer cette photo ? Cette action est irréversible.');
+    if (!ok) return;
+
+    const persistedCount = (formData?.imageUrls || []).length;
+    if (index < persistedCount) {
+      try {
+        const targetPath = formData?.imageFilePaths?.[index];
+        if (targetPath) await storageService?.deleteProductImage(targetPath);
+        setFormData(prev => {
+          const nextUrls = [...(prev?.imageUrls || [])];
+          const nextPaths = [...(prev?.imageFilePaths || [])];
+          nextUrls.splice(index, 1);
+          nextPaths.splice(index, 1);
+          return {
+            ...prev,
+            imageUrl: nextUrls?.[0] || '',
+            imageFilePath: nextPaths?.[0] || '',
+            imageUrls: nextUrls,
+            imageFilePaths: nextPaths
+          };
+        });
+      } catch (error) {
+        console.error('Persisted image removal failed:', error);
+      }
+      return;
+    }
+
+    const pendingIndex = index - persistedCount;
+    setPendingImagePreviews(prev => prev.filter((_, i) => i !== pendingIndex));
+    setPendingImageFiles(prev => prev.filter((_, i) => i !== pendingIndex));
   };
 
   if (!isOpen) return null;
@@ -237,16 +501,17 @@ const ProductModal = ({
   const isReadOnly = mode === 'view';
   const title = mode === 'add' ? 'Ajouter un produit' : mode === 'edit' ? 'Modifier le produit' : 'Détails du produit';
   
-  // Modified conditions to always show features in add and edit modes
-  const canGenerateQR = mode !== 'view' && (formData?.name || formData?.sku || mode === 'add');
+  const canGenerateQR = mode !== 'view' && !!product?.id && !!formData?.name && !!formData?.sku;
   const canGenerateSKU = mode !== 'view' && mode !== 'view';
-  const showQRSection = mode !== 'view'; // Always show QR section in add/edit modes
-  const showSKUGenerator = mode !== 'view'; // Always show SKU generator in add/edit modes
+  const showQRSection = mode !== 'view';
+  const showSKUGenerator = mode !== 'view';
+  const persistedImages = (formData?.imageUrls || []).length ? (formData?.imageUrls || []) : (formData?.imageUrl ? [formData.imageUrl] : []);
+  const galleryImages = [...persistedImages, ...pendingImagePreviews].filter(Boolean);
 
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-200 flex items-center justify-center p-4">
-        <div className="bg-surface rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden modal-shadow">
+        <div className="bg-surface rounded-lg sm:rounded-lg w-full max-w-2xl h-[100dvh] sm:h-[92vh] max-h-[100dvh] sm:max-h-[92vh] overflow-hidden modal-shadow flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
@@ -258,8 +523,8 @@ const ProductModal = ({
                   size="icon"
                   onClick={handleGenerateQR}
                   className="text-text-muted hover:text-text-primary"
-                  title="Générer QR Code"
-                  disabled={!formData?.name && !formData?.sku}
+                  title={canGenerateQR ? (formData?.qrCode ? 'Régénérer le QR de gestion du stock' : 'Générer le QR de gestion du stock') : 'Enregistre d’abord le produit avec un nom et un SKU'}
+                  disabled={!canGenerateQR}
                 >
                   <Icon name="QrCode" size={20} />
                 </Button>
@@ -277,8 +542,8 @@ const ProductModal = ({
           </div>
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Left Column */}
               <div className="space-y-4">
                 <Input
@@ -364,18 +629,75 @@ const ProductModal = ({
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Image du produit
                   </label>
-                  <ImageUpload
-                    onUpload={handleImageUpload}
-                    currentImage={formData?.imageUrl}
-                    onRemove={handleImageRemove}
-                    disabled={isReadOnly || uploadingImage}
-                  />
-                  {errors?.imageUrl && (
-                    <p className="text-sm text-destructive mt-1">{errors?.imageUrl}</p>
+                  {!isReadOnly && isMobileClient && product?.id && (
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        iconName="Camera"
+                        iconPosition="left"
+                        onClick={() => navigate(`/products/photo-upload?product=${product.id}`)}
+                        className="w-full"
+                      >
+                        Prendre une photo
+                      </Button>
+                      <p className="text-xs text-text-muted">Flux mobile dédié pour ajouter une photo au produit.</p>
+                    </div>
                   )}
+                  {errors?.imageUrl && (
+                    <div className="mt-2 rounded-md border border-error/20 bg-error/10 p-3 text-sm text-destructive">{errors?.imageUrl}</div>
+                  )}
+                  {uploadDebug && (
+                    <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-text-muted">{uploadDebug}</div>
+                  )}
+
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-text-muted">Jusqu’à 5 photos par produit</p>
+                      <span className="text-xs text-text-muted">{galleryImages.filter(Boolean).length}/5</span>
+                    </div>
+
+                    {!isReadOnly && !isMobileClient && (
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={uploadingImage || galleryImages.length >= 5}
+                          onChange={handleAdditionalImagesUpload}
+                          className="block w-full text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-md file:border file:border-border file:bg-muted file:text-text-primary"
+                        />
+                      </div>
+                    )}
+
+                    {galleryImages.length > 0 && (
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                        {galleryImages.map((url, idx) => (
+                          <button
+                            key={`${url}-${idx}`}
+                            type="button"
+                            onClick={() => setLightboxIndex(idx)}
+                            className="relative rounded-md overflow-hidden border border-border h-14"
+                            title="Agrandir"
+                          >
+                            <Image src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveAdditionalImage(idx); }}
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center shadow"
+                                title="Supprimer la photo"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="Quantité"
                     type="number"
@@ -418,58 +740,25 @@ const ProductModal = ({
                 </div>
 
                 {/* QR Code Generation Section - Always show in add/edit modes */}
-                {showQRSection && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">
-                      QR Code Produit
-                    </label>
-                    <div className="bg-muted/50 rounded-lg p-4 border-2 border-dashed border-border">
-                      <div className="text-center">
-                        <Icon name="QrCode" size={32} className="mx-auto mb-2 text-text-muted" />
-                        <p className="text-sm text-text-muted mb-1 font-medium">
-                          QR Code pour gestion des stocks
-                        </p>
-                        <p className="text-xs text-text-secondary mb-3">
-                          {!formData?.name && !formData?.sku 
-                            ? 'Remplissez le nom et le SKU pour générer le QR Code' :'Accès direct à la page produit et gestion de quantité'
-                          }
-                        </p>
-                        <Button
-                          variant="outline"
-                          onClick={handleGenerateQR}
-                          iconName="QrCode"
-                          iconPosition="left"
-                          className="w-full"
-                          disabled={!formData?.name && !formData?.sku}
-                        >
-                          {!formData?.name && !formData?.sku ? 'Remplir les champs requis' : 'Créer QR Code'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-border">
-            <div className="flex items-center space-x-2">
-              {showQRSection && (
+          <div className="flex items-center justify-end p-3 sm:p-6 border-t border-border bg-surface sticky bottom-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {mode === 'edit' && canDelete && (
                 <Button
-                  variant="ghost"
-                  onClick={handleGenerateQR}
-                  iconName="QrCode"
+                  variant="destructive"
+                  onClick={handleDeleteProduct}
+                  iconName="Trash2"
                   iconPosition="left"
-                  className="text-sm"
-                  disabled={!formData?.name && !formData?.sku}
+                  loading={isLoading}
                 >
-                  QR Code
+                  Supprimer
                 </Button>
               )}
-            </div>
-            
-            <div className="flex items-center space-x-3">
               <Button
                 variant="outline"
                 onClick={onClose}
@@ -488,8 +777,46 @@ const ProductModal = ({
               )}
             </div>
           </div>
+          {errors?.submit && (
+            <div className="px-6 pb-4 text-sm text-destructive">{errors.submit}</div>
+          )}
         </div>
       </div>
+
+      {lightboxIndex !== null && galleryImages[lightboxIndex] && (
+        <div className="fixed inset-0 z-[300] bg-black/85 flex items-center justify-center p-4">
+          <button
+            className="absolute top-4 right-4 text-white"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <Icon name="X" size={28} />
+          </button>
+
+          {galleryImages.length > 1 && (
+            <button
+              className="absolute left-4 text-white"
+              onClick={() => setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)}
+            >
+              <Icon name="ChevronLeft" size={32} />
+            </button>
+          )}
+
+          <img
+            src={galleryImages[lightboxIndex]}
+            alt={`Photo ${lightboxIndex + 1}`}
+            className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg"
+          />
+
+          {galleryImages.length > 1 && (
+            <button
+              className="absolute right-4 text-white"
+              onClick={() => setLightboxIndex((prev) => (prev + 1) % galleryImages.length)}
+            >
+              <Icon name="ChevronRight" size={32} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* QR Code Generator Modal */}
       <QRCodeGenerator

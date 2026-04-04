@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const ProgressTracker = ({ operation, onClose }) => {
+const ProgressTracker = ({ operation, onClose, onDownload }) => {
   if (!operation) return null;
 
   const { type, progress, status, results, logs } = operation;
@@ -123,6 +123,7 @@ const ProgressTracker = ({ operation, onClose }) => {
             variant="default"
             iconName="Download"
             iconPosition="left"
+            onClick={onDownload}
           >
             Download File
           </Button>

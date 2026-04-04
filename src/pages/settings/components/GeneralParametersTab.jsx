@@ -4,9 +4,11 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import InlineFeedback from '../../../components/ui/InlineFeedback';
 import { useAuth } from '../../../contexts/AuthContext';
+import settingsService from '../../../services/settingsService';
 
-const GeneralParametersTab = ({ userRole, onSave }) => {
+const GeneralParametersTab = ({ userRole, currentCompanyId, onSave }) => {
   const { isAdministrator, isManager } = useAuth();
   const [settings, setSettings] = useState({
     timezone: 'Europe/Brussels',
@@ -26,6 +28,7 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
 
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
 
   const timezoneOptions = [
     { value: 'Europe/Brussels', label: 'Europe/Brussels (GMT+1)' },
@@ -63,12 +66,19 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
   ];
 
   useEffect(() => {
-    // Load settings from localStorage or API
-    const savedSettings = localStorage.getItem('generalSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-  }, []);
+    const load = async () => {
+      if (currentCompanyId) {
+        const { data } = await settingsService.getCompanySettings(currentCompanyId);
+        if (data?.general) {
+          setSettings((prev) => ({ ...prev, ...data.general }));
+          return;
+        }
+      }
+      const savedSettings = localStorage.getItem('generalSettings');
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+    };
+    load();
+  }, [currentCompanyId]);
 
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({
@@ -76,6 +86,7 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
       [key]: value
     }));
     setHasChanges(true);
+    setFeedback(null);
   };
 
   const handleVisibilityChange = (key, checked) => {
@@ -87,6 +98,7 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
       }
     }));
     setHasChanges(true);
+    setFeedback(null);
   };
 
   const handleSave = async () => {
@@ -97,26 +109,40 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
       await onSave('general', settings);
       
       // Dispatch event to notify other components of settings change
-      window.dispatchEvent(new CustomEvent('settingsChanged'));
+      window.dispatchEvent(new CustomEvent('settingsChanged', { detail: settings }));
       
       setHasChanges(false);
+      setFeedback({ type: 'success', message: 'Paramètres généraux sauvegardés.' });
     } catch (error) {
       console.error('Error saving settings:', error);
+      setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde.' });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleReset = () => {
-    const savedSettings = localStorage.getItem('generalSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-    setHasChanges(false);
+    const load = async () => {
+      if (currentCompanyId) {
+        const { data } = await settingsService.getCompanySettings(currentCompanyId);
+        if (data?.general) {
+          setSettings((prev) => ({ ...prev, ...data.general }));
+          setHasChanges(false);
+      setFeedback({ type: 'success', message: 'Paramètres généraux sauvegardés.' });
+          return;
+        }
+      }
+      const savedSettings = localStorage.getItem('generalSettings');
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+      setHasChanges(false);
+      setFeedback({ type: 'success', message: 'Paramètres généraux sauvegardés.' });
+    };
+    load();
   };
 
   return (
     <div className="space-y-8">
+      <InlineFeedback type={feedback?.type} message={feedback?.message} />
       {/* Timezone Configuration */}
       <div className="bg-card rounded-lg border border-border p-6">
         <div className="flex items-center space-x-3 mb-4">
@@ -138,13 +164,6 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
             onChange={(value) => handleSettingChange('timezone', value)}
           />
 
-          <Input
-            label="Heure du digest quotidien"
-            type="time"
-            description="Heure d'envoi du résumé quotidien"
-            value={settings?.digestTiming}
-            onChange={(e) => handleSettingChange('digestTiming', e?.target?.value)}
-          />
         </div>
       </div>
 
@@ -239,14 +258,6 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Select
-            label="Fréquence du digest"
-            description="Fréquence d'envoi des résumés par email"
-            options={digestFrequencyOptions}
-            value={settings?.digestFrequency}
-            onChange={(value) => handleSettingChange('digestFrequency', value)}
-          />
-
-          <Select
             label="Format de date"
             description="Format d'affichage des dates"
             options={dateFormatOptions}
@@ -262,14 +273,23 @@ const GeneralParametersTab = ({ userRole, onSave }) => {
             onChange={(value) => handleSettingChange('numberFormat', value)}
           />
 
+          <Input
+            label="Heure du digest quotidien"
+            type="time"
+            description="Heure d'envoi du résumé quotidien"
+            value={settings?.digestTiming}
+            onChange={(e) => handleSettingChange('digestTiming', e?.target?.value)}
+          />
+
           <Select
             label="Langue par défaut"
-            description="Langue de l'interface utilisateur"
+            description="Langue de l'interface utilisateur (traductions en cours)"
             options={languageOptions}
             value={settings?.defaultLanguage}
             onChange={(value) => handleSettingChange('defaultLanguage', value)}
             className="md:col-span-2 lg:col-span-1"
           />
+
         </div>
 
         {/* Language Preview */}
