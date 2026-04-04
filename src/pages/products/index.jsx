@@ -154,7 +154,8 @@ const Products = () => {
   };
 
   useEffect(() => {
-    const productId = searchParams?.get('product');
+    // Support both 'product' and 'id' params (for notifications)
+    const productId = searchParams?.get('product') || searchParams?.get('id');
     const modeFromUrl = searchParams?.get('mode');
     if (!productId || !products?.length) return;
 
@@ -166,6 +167,7 @@ const Products = () => {
       return;
     }
 
+    // Open in view mode by default (for notifications)
     const modalMode = modeFromUrl === 'edit' ? 'edit' : 'view';
     setModalState({ isOpen: true, mode: modalMode, product: target });
   }, [searchParams, products]);

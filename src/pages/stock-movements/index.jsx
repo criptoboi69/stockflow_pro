@@ -68,6 +68,18 @@ const StockMovements = () => {
     }
   }, [currentCompany, authLoading]);
 
+  // Open movement details modal from URL param (for notifications)
+  useEffect(() => {
+    const movementId = searchParams?.get('id');
+    if (!movementId || !movements?.length) return;
+
+    const target = movements.find((m) => m?.id === movementId);
+    if (!target) return;
+
+    setSelectedMovementForDetails(target);
+    setIsDetailsModalOpen(true);
+  }, [searchParams, movements]);
+
   const loadMovements = async () => {
     try {
       setIsLoading(true);
