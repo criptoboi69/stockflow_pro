@@ -10,6 +10,7 @@ import NotificationSettingsTab from './components/NotificationSettingsTab';
 import CompanyManagementTab from './components/CompanyManagementTab';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import UserPreferencesTab from './components/UserPreferencesTab';
 import settingsService from '../../services/settingsService';
 
@@ -86,7 +87,7 @@ const Settings = () => {
       localStorage.setItem('settingsLastSaved', now?.toISOString());
       return { success: true };
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logger.error('Error saving settings:', error);
       throw error;
     }
   };

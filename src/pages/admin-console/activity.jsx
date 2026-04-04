@@ -3,6 +3,7 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import PageHeader from '../../components/ui/PageHeader';
 import adminConsoleService from '../../services/adminConsoleService';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import { fmtDate } from '../../utils/adminConsole';
 
 const ActivityAdminPage = () => {
@@ -18,7 +19,7 @@ const ActivityAdminPage = () => {
         const data = await adminConsoleService.getRecentActivity(50);
         setActivity(data);
       } catch (error) {
-        console.error('Activity admin load error:', error);
+        logger.error('Activity admin load error:', error);
       } finally {
         setLoading(false);
       }

@@ -5,6 +5,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import adminConsoleService from '../../services/adminConsoleService';
 import adminConsoleOpsStateService from '../../services/adminConsoleOpsStateService';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 import { buildActivityFeed, buildAnomalySummary, buildCompanyAnomalies, buildCompanyHealthSummary, buildGovernanceSummary, buildUrgentActions, buildWorkboardItems, buildWorkboardStats, filterWorkboardItems, fmtCurrency, fmtDate, fmtRelativeDate, loadOpsState, mergeWorkboardWithState, saveOpsState } from '../../utils/adminConsole';
@@ -122,7 +123,7 @@ const CompanyDetail = () => {
           setOpsBackendReady(false);
         }
       } catch (error) {
-        console.error('Company detail load error:', error);
+        logger.error('Company detail load error:', error);
       } finally {
         setLoading(false);
       }

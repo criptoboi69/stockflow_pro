@@ -5,6 +5,7 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import adminConsoleService from '../../services/adminConsoleService';
 import adminConsoleOpsStateService from '../../services/adminConsoleOpsStateService';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import Icon from '../../components/AppIcon';
 import ListFilterBar from '../../components/ui/ListFilterBar';
 import FilterDropdown from '../../components/ui/FilterDropdown';
@@ -123,7 +124,7 @@ const AdminConsole = () => {
           setOpsBackendReady(false);
         }
       } catch (error) {
-        console.error('Admin console load error:', error);
+        logger.error('Admin console load error:', error);
       } finally {
         setLoading(false);
       }

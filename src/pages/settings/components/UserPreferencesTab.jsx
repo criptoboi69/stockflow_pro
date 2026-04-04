@@ -133,7 +133,7 @@ const UserPreferencesTab = ({ currentTenant, companies, onSwitchCompany, onSave,
 
         setPreferences(next);
       } catch (error) {
-        console.error('Error loading user profile:', error);
+        logger.error('Error loading user profile:', error);
         setFeedback({ type: 'error', message: error?.message || 'Erreur lors du chargement du profil.' });
       } finally {
         setLoadingProfile(false);
@@ -190,7 +190,7 @@ const UserPreferencesTab = ({ currentTenant, companies, onSwitchCompany, onSave,
       handlePersonalInfoChange('avatar', data);
       setFeedback({ type: 'success', message: 'Avatar uploadé avec succès.' });
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      logger.error('Error uploading avatar:', error);
       setFeedback({ type: 'error', message: error?.message || "Erreur lors de l'upload de l'avatar." });
     } finally {
       setUploadingAvatar(false);
@@ -220,7 +220,7 @@ const UserPreferencesTab = ({ currentTenant, companies, onSwitchCompany, onSave,
       setHasChanges(false);
       setFeedback({ type: 'success', message: 'Informations personnelles sauvegardées.' });
     } catch (error) {
-      console.error('Error saving preferences:', error);
+      logger.error('Error saving preferences:', error);
       setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde.' });
     } finally {
       setIsSaving(false);

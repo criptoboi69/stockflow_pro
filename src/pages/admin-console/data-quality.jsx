@@ -3,6 +3,7 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import PageHeader from '../../components/ui/PageHeader';
 import adminConsoleService from '../../services/adminConsoleService';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import { buildHealthItems } from '../../utils/adminConsole';
 
 const DataQualityAdminPage = () => {
@@ -18,7 +19,7 @@ const DataQualityAdminPage = () => {
         const data = await adminConsoleService.getSystemHealth();
         setHealth(data);
       } catch (error) {
-        console.error('Data quality load error:', error);
+        logger.error('Data quality load error:', error);
       } finally {
         setLoading(false);
       }

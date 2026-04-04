@@ -4,6 +4,7 @@ import SidebarNavigation from '../../components/ui/SidebarNavigation';
 import PageHeader from '../../components/ui/PageHeader';
 import adminConsoleService from '../../services/adminConsoleService';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import { buildOpsQueue, buildOpsStats, buildPrioritizedCompanies, filterOpsQueue } from '../../utils/adminConsole';
 
 const Badge = ({ tone = 'neutral', children }) => {
@@ -31,7 +32,7 @@ const OperationsAdminPage = () => {
         const data = await adminConsoleService.getCompaniesOverview();
         setCompanies(data);
       } catch (error) {
-        console.error('Operations admin load error:', error);
+        logger.error('Operations admin load error:', error);
       } finally {
         setLoading(false);
       }

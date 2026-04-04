@@ -125,7 +125,7 @@ const NotificationSettingsTab = ({ userRole, onSave, currentCompanyId }) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setFeedback({ type: 'success', message: 'Test webhook envoyé avec succès.' });
     } catch (error) {
-      console.error('Webhook test failed:', error);
+      logger.error('Webhook test failed:', error);
       setFeedback({ type: 'error', message: `Erreur lors du test du webhook: ${error?.message || 'inconnue'}` });
     } finally {
       setTestingWebhook(false);
@@ -140,7 +140,7 @@ const NotificationSettingsTab = ({ userRole, onSave, currentCompanyId }) => {
       setHasChanges(false);
       setFeedback({ type: 'success', message: 'Notifications sauvegardées.' });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logger.error('Error saving settings:', error);
       setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde' });
     } finally {
       setIsSaving(false);

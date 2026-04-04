@@ -54,7 +54,7 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
       if (error) throw error;
       setCompanies(data || []);
     } catch (error) {
-      console.error('Error loading companies:', error);
+      logger.error('Error loading companies:', error);
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +95,7 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
       await onSave('companies', { ok: true });
       setFeedback({ type: 'success', message: 'Entreprise créée avec succès.' });
     } catch (error) {
-      console.error('Error creating company:', error);
+      logger.error('Error creating company:', error);
       setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la création' });
     } finally {
       setIsSaving(false);
@@ -110,7 +110,7 @@ const CompanyManagementTab = ({ userRole, onSave }) => {
       if (error) throw error;
       await loadCompanies();
     } catch (error) {
-      console.error('Error updating company status:', error);
+      logger.error('Error updating company status:', error);
       setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la mise à jour' });
     }
   };

@@ -114,7 +114,7 @@ const GeneralParametersTab = ({ userRole, currentCompanyId, onSave }) => {
       setHasChanges(false);
       setFeedback({ type: 'success', message: 'Paramètres généraux sauvegardés.' });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logger.error('Error saving settings:', error);
       setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde.' });
     } finally {
       setIsSaving(false);
