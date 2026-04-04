@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { logger } from '../../../utils/logger';
 import adminConsoleService from '../../../services/adminConsoleService';
@@ -7,8 +7,9 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Icon from '../../../components/AppIcon';
+import InlineFeedback from '../../../components/ui/InlineFeedback';
 
-const UserRow = ({ user, companies }) => {
+const UserRow = ({ user, companies, allCompanies, onManage }) => {
   const userCompanies = companies.filter(c => c.user_id === user.id);
   
   return (
@@ -26,16 +27,21 @@ const UserRow = ({ user, companies }) => {
       </div>
       <div className="flex items-center gap-4">
         <div className="hidden md:flex items-center gap-2">
-          {userCompanies.slice(0, 3).map((uc, idx) => (
-            <span key={idx} className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
-              {uc.company_name?.slice(0, 15)}...
-            </span>
-          ))}
+          {userCompanies.slice(0, 3).map((uc, idx) => {
+            const company = allCompanies.find(c => c.id === uc.company_id);
+            return (
+              <span key={idx} className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                {company?.name?.slice(0, 15)}{company?.name?.length > 15 ? '...' : ''}
+              </span>
+            );
+          })}
           {userCompanies.length > 3 && (
             <span className="text-xs text-text-muted">+{userCompanies.length - 3}</span>
           )}
         </div>
-        <Button variant="outline" size="sm">Gérer</Button>
+        <Button variant="outline" size="sm" onClick={() => onManage(user)}>
+          Gérer
+        </Button>
       </div>
     </div>
   );
@@ -46,27 +52,33 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [allCompanies, setAllCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [companyFilter, setCompanyFilter] = useState('all');
+  const [feedback, setFeedback] = useState(null);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [usersData, companiesData, companiesOverview] = await Promise.all([
+        adminConsoleService.getAllUsers(),
+        adminConsoleService.getAllUserCompanyRoles(),
+        adminConsoleService.getCompaniesOverview()
+      ]);
+      setUsers(usersData);
+      setCompanies(companiesData);
+      setAllCompanies(companiesOverview);
+    } catch (error) {
+      logger.error('User management load error:', error);
+      setFeedback({ type: 'error', message: 'Erreur lors du chargement des utilisateurs' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        setLoading(true);
-        const [usersData, companiesData] = await Promise.all([
-          adminConsoleService.getAllUsers(),
-          adminConsoleService.getAllUserCompanyRoles()
-        ]);
-        setUsers(usersData);
-        setCompanies(companiesData);
-      } catch (error) {
-        logger.error('User management load error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -93,6 +105,13 @@ const UserManagement = () => {
     ];
   }, [companies]);
 
+  const handleManageUser = (user) => {
+    setFeedback({ 
+      type: 'info', 
+      message: `Gestion de ${user.email} - Fonctionnalité à implémenter` 
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -112,7 +131,7 @@ const UserManagement = () => {
         actions={
           <Button
             variant="default"
-            onClick={() => {/* TODO: Add user modal */}}
+            onClick={() => setFeedback({ type: 'info', message: 'Fonctionnalité à implémenter' })}
             iconName="UserPlus"
             iconPosition="left"
             size="sm"
@@ -123,6 +142,12 @@ const UserManagement = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+        {feedback && (
+          <div className="mb-6">
+            <InlineFeedback type={feedback.type} message={feedback.message} />
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
@@ -158,7 +183,13 @@ const UserManagement = () => {
         ) : (
           <div className="space-y-3">
             {filteredUsers.map((user) => (
-              <UserRow key={user?.id} user={user} companies={companies} />
+              <UserRow
+                key={user?.id}
+                user={user}
+                companies={companies}
+                allCompanies={allCompanies}
+                onManage={handleManageUser}
+              />
             ))}
           </div>
         )}

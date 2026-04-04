@@ -86,6 +86,41 @@ class AdminConsoleService {
     };
   }
 
+  async addUserToCompany(userId, companyId, role) {
+    const { error } = await supabase
+      .from('user_company_roles')
+      .insert({
+        user_id: userId,
+        company_id: companyId,
+        role,
+        is_active: true
+      });
+    
+    if (error) throw error;
+    return { success: true };
+  }
+
+  async removeUserFromCompany(userId, companyId) {
+    const { error } = await supabase
+      .from('user_company_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('company_id', companyId);
+    
+    if (error) throw error;
+    return { success: true };
+  }
+
+  async updateCompanyStatus(companyId, status) {
+    const { error } = await supabase
+      .from('companies')
+      .update({ status })
+      .eq('id', companyId);
+    
+    if (error) throw error;
+    return { success: true };
+  }
+
   async getAlerts() {
     const alerts = [];
     const companies = await this.getCompaniesOverview();

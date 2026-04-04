@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { logger } from '../../../utils/logger';
@@ -8,8 +8,9 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Icon from '../../../components/AppIcon';
+import InlineFeedback from '../../../components/ui/InlineFeedback';
 
-const CompanyCard = ({ company }) => {
+const CompanyCard = ({ company, onToggleStatus }) => {
   const statusConfig = {
     active: { color: 'bg-success/10 text-success border-success/20', label: 'Actif' },
     inactive: { color: 'bg-muted text-text-muted border-border', label: 'Inactif' },
@@ -62,6 +63,19 @@ const CompanyCard = ({ company }) => {
           <Icon name="ArrowRight" size={16} />
         </Link>
       </div>
+
+      {onToggleStatus && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <Button
+            variant={company?.status === 'active' ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => onToggleStatus(company?.id, company?.status === 'active' ? 'inactive' : 'active')}
+            className="w-full"
+          >
+            {company?.status === 'active' ? 'Désactiver' : 'Activer'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -72,21 +86,35 @@ const CompaniesList = () => {
   const [companies, setCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [feedback, setFeedback] = useState(null);
+
+  const loadCompanies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await adminConsoleService.getCompaniesOverview();
+      setCompanies(data);
+    } catch (error) {
+      logger.error('Companies list load error:', error);
+      setFeedback({ type: 'error', message: 'Erreur lors du chargement des entreprises' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadCompanies = async () => {
-      try {
-        setLoading(true);
-        const data = await adminConsoleService.getCompaniesOverview();
-        setCompanies(data);
-      } catch (error) {
-        logger.error('Companies list load error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadCompanies();
-  }, []);
+  }, [loadCompanies]);
+
+  const handleToggleStatus = async (companyId, newStatus) => {
+    try {
+      await adminConsoleService.updateCompanyStatus(companyId, newStatus);
+      setFeedback({ type: 'success', message: `Entreprise ${newStatus === 'active' ? 'activée' : 'désactivée'}` });
+      await loadCompanies();
+    } catch (error) {
+      logger.error('Company status update error:', error);
+      setFeedback({ type: 'error', message: 'Erreur lors de la mise à jour du statut' });
+    }
+  };
 
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
@@ -123,7 +151,7 @@ const CompaniesList = () => {
         actions={
           <Button
             variant="default"
-            onClick={() => {/* TODO: Add company modal */}}
+            onClick={() => setFeedback({ type: 'info', message: 'Fonctionnalité à implémenter' })}
             iconName="Plus"
             iconPosition="left"
             size="sm"
@@ -134,6 +162,12 @@ const CompaniesList = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+        {feedback && (
+          <div className="mb-6">
+            <InlineFeedback type={feedback.type} message={feedback.message} />
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
@@ -169,7 +203,7 @@ const CompaniesList = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCompanies.map((company) => (
-              <CompanyCard key={company?.id} company={company} />
+              <CompanyCard key={company?.id} company={company} onToggleStatus={handleToggleStatus} />
             ))}
           </div>
         )}
