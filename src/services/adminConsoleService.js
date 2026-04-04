@@ -100,6 +100,120 @@ class AdminConsoleService {
     return { success: true };
   }
 
+  async runDataQualityChecks() {
+    const checks = [];
+    const summary = { pass: 0, warning: 0, error: 0 };
+    
+    // Check 1: Companies without admin
+    const companies = await this.getCompaniesOverview();
+    const companiesWithoutAdmin = companies.filter(c => c.admins === 0);
+    checks.push({
+      name: 'Entreprises sans administrateur',
+      description: 'Chaque entreprise doit avoir au moins un administrateur',
+      status: companiesWithoutAdmin.length > 0 ? 'error' : 'pass',
+      affectedCount: companiesWithoutAdmin.length,
+      details: companiesWithoutAdmin.length > 0 
+        ? `${companiesWithoutAdmin.map(c => c.name).join(', ')}` 
+        : 'Toutes les entreprises ont un administrateur'
+    });
+    summary[companiesWithoutAdmin.length > 0 ? 'error' : 'pass']++;
+    
+    // Check 2: Products without image
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, image_url, company_id')
+      .is('image_url', null)
+      .limit(100);
+    checks.push({
+      name: 'Produits sans image',
+      description: 'Les produits devraient avoir au moins une image',
+      status: (products?.length || 0) > 0 ? 'warning' : 'pass',
+      affectedCount: products?.length || 0,
+      details: products?.length > 0 ? `${products.length} produits sans image` : 'Tous les produits ont une image'
+    });
+    summary[(products?.length || 0) > 0 ? 'warning' : 'pass']++;
+    
+    // Check 3: Low stock products
+    const lowStockProducts = companies.reduce((sum, c) => sum + (c.lowStock || 0), 0);
+    checks.push({
+      name: 'Stocks faibles',
+      description: 'Produits en dessous du seuil minimum',
+      status: lowStockProducts > 10 ? 'error' : lowStockProducts > 0 ? 'warning' : 'pass',
+      affectedCount: lowStockProducts,
+      details: lowStockProducts > 0 ? `${lowStockProducts} produits en stock faible` : 'Tous les stocks sont OK'
+    });
+    summary[lowStockProducts > 10 ? 'error' : lowStockProducts > 0 ? 'warning' : 'pass']++;
+    
+    // Check 4: Inactive users > 90 days
+    const { data: inactiveUsers } = await supabase
+      .from('user_profiles')
+      .select('id, email, updated_at')
+      .is('is_active', false)
+      .limit(100);
+    checks.push({
+      name: 'Utilisateurs inactifs',
+      description: 'Utilisateurs désactivés ou sans activité récente',
+      status: (inactiveUsers?.length || 0) > 0 ? 'warning' : 'pass',
+      affectedCount: inactiveUsers?.length || 0,
+      details: inactiveUsers?.length > 0 ? `${inactiveUsers.length} utilisateurs inactifs` : 'Aucun utilisateur inactif'
+    });
+    summary[(inactiveUsers?.length || 0) > 0 ? 'warning' : 'pass']++;
+    
+    return { checks, summary };
+  }
+
+  async getActivityLog(limit = 100) {
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('id, company_id, table_name, action, created_at, created_by, new_values, old_values')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    const activities = data || [];
+    const companyIds = [...new Set(activities.map(a => a.company_id))];
+    
+    let companies = [];
+    if (companyIds.length) {
+      const { data: companiesData } = await supabase
+        .from('companies')
+        .select('id, name')
+        .in('id', companyIds);
+      companies = companiesData || [];
+    }
+    
+    return activities.map(act => ({
+      ...act,
+      company_name: companies.find(c => c.id === act.company_id)?.name,
+      description: act.new_values ? JSON.stringify(act.new_values).slice(0, 100) : null
+    }));
+  }
+
+  async getOperationsQueue() {
+    const { data } = await supabase
+      .from('data_operations')
+      .select('id, type, status, company_id, created_by, created_at, metadata')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    const operations = data || [];
+    const companyIds = [...new Set(operations.map(o => o.company_id))];
+    
+    let companies = [];
+    if (companyIds.length) {
+      const { data: companiesData } = await supabase
+        .from('companies')
+        .select('id, name')
+        .in('id', companyIds);
+      companies = companiesData || [];
+    }
+    
+    return operations.map(op => ({
+      ...op,
+      company_name: companies.find(c => c.id === op.company_id)?.name,
+      progress: op.metadata?.progress || (op.status === 'completed' ? 100 : 0)
+    }));
+  }
+
   async removeUserFromCompany(userId, companyId) {
     const { error } = await supabase
       .from('user_company_roles')
@@ -132,17 +246,34 @@ class AdminConsoleService {
         icon: 'Building2',
         title: `${companiesWithoutAdmin.length} entreprise(s) sans administrateur`,
         description: 'Configurez au moins un admin pour chaque société',
-        severity: 'warning'
+        severity: 'warning',
+        link: '/admin-console/companies'
       });
     }
     
-    // Users inactive > 30 days
-    alerts.push({
-      icon: 'Users',
-      title: 'Utilisateurs inactifs',
-      description: 'Vérifiez les comptes sans activité depuis 30 jours',
-      severity: 'warning'
-    });
+    // Companies inactive
+    const inactiveCompanies = companies.filter(c => c.status === 'inactive');
+    if (inactiveCompanies.length > 0) {
+      alerts.push({
+        icon: 'Building2',
+        title: `${inactiveCompanies.length} entreprise(s) inactive(s)`,
+        description: 'Réactivez ou archivez ces sociétés',
+        severity: 'warning',
+        link: '/admin-console/companies'
+      });
+    }
+    
+    // Low stock across all companies
+    const totalLowStock = companies.reduce((sum, c) => sum + (c.lowStock || 0), 0);
+    if (totalLowStock > 0) {
+      alerts.push({
+        icon: 'AlertTriangle',
+        title: `${totalLowStock} produit(s) en stock faible`,
+        description: 'Vérifiez les approvisionnements',
+        severity: 'error',
+        link: '/admin-console/data-quality'
+      });
+    }
     
     return alerts;
   }
