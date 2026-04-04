@@ -213,43 +213,43 @@ const ProductTable = ({
                       <span>{statusBadge?.label}</span>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <div className={`flex items-center justify-end ${isMobile ? 'flex-col gap-1 min-w-[44px]' : 'space-x-1'}`}>
+                  <td className={`${isMobile ? 'p-2' : 'p-4'}`}>
+                    <div className={`flex items-center justify-end ${isMobile ? 'space-x-0.5' : 'space-x-1'}`}>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={isMobile ? "icon-sm" : "icon"}
                         onClick={() => onView(product)}
-                        className="text-text-muted hover:text-text-primary"
-                        title="Voir les détails"
+                        className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
+                        title="Voir"
                       >
-                        <Icon name="Eye" size={16} />
+                        <Icon name="Eye" size={isMobile ? 14 : 16} />
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={isMobile ? "icon-sm" : "icon"}
                         onClick={() => onEdit(product)}
-                        className="text-text-muted hover:text-text-primary"
+                        className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
                         title="Modifier"
                       >
-                        <Icon name="Edit" size={16} />
+                        <Icon name="Edit" size={isMobile ? 14 : 16} />
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={isMobile ? "icon-sm" : "icon"}
                         onClick={() => onGenerateQR(product)}
-                        className="text-text-muted hover:text-text-primary"
-                        title="Générer QR Code"
+                        className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
+                        title="QR Code"
                       >
-                        <Icon name="QrCode" size={16} />
+                        <Icon name="QrCode" size={isMobile ? 14 : 16} />
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={isMobile ? "icon-sm" : "icon"}
                         onClick={() => onStockMovement(product)}
-                        className="text-text-muted hover:text-text-primary"
-                        title="Mouvement de stock"
+                        className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
+                        title="Mouvement"
                       >
-                        <Icon name="ArrowUpDown" size={16} />
+                        <Icon name="ArrowUpDown" size={isMobile ? 14 : 16} />
                       </Button>
                     </div>
                   </td>

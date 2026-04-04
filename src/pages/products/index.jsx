@@ -30,7 +30,7 @@ const Products = () => {
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState(isMobile ? 'card' : 'list'); // Default to card on mobile
+  const [viewMode, setViewMode] = useState('list'); // Default to list view
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
