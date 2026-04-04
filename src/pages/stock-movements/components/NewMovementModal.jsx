@@ -5,6 +5,7 @@ import Input from '../../../components/ui/Input';
 import productService from '../../../services/productService';
 import locationService from '../../../services/locationService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { logger } from '../../../utils/logger';
 
 const NewMovementModal = ({ isOpen, onClose, onSave, userRole, initialProduct = null }) => {
   const { currentCompany } = useAuth();
@@ -44,7 +45,7 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole, initialProduct = 
         setProducts(productsData || []);
         setLocations(locationsData || []);
       } catch (error) {
-        console.error('Error loading movement modal data:', error);
+        logger.error('Error loading movement modal data:', error);
         setErrors({ submit: 'Impossible de charger les produits ou emplacements.' });
       } finally {
         setIsLoadingProducts(false);
@@ -130,7 +131,7 @@ const NewMovementModal = ({ isOpen, onClose, onSave, userRole, initialProduct = 
       await onSave(movementData);
       onClose();
     } catch (error) {
-      console.error('Error creating movement:', error);
+      logger.error('Error creating movement:', error);
       setErrors({ submit: error?.message || 'Erreur lors de la création. Veuillez réessayer.' });
     } finally {
       setIsSubmitting(false);

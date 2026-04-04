@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 import stockMovementService from '../../services/stockMovementService';
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
 import SidebarNavigation from '../../components/ui/SidebarNavigation';
@@ -97,7 +98,7 @@ const StockMovements = () => {
       setFilteredMovements(data);
       setAvailableLocations(Array.from(new Set((data || []).map((m) => m?.location).filter(Boolean))).sort());
     } catch (err) {
-      console.error('Error loading stock movements:', err);
+      logger.error('Error loading stock movements:', err);
       setError('Erreur lors du chargement des mouvements de stock');
     } finally {
       setIsLoading(false);
@@ -153,7 +154,7 @@ const StockMovements = () => {
       setSelectedMovement(null);
       // Real-time subscription will handle the update
     } catch (err) {
-      console.error('Error updating movement:', err);
+      logger.error('Error updating movement:', err);
       setError('Erreur lors de la mise à jour du mouvement');
     }
   };
@@ -201,7 +202,7 @@ const StockMovements = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error exporting stock movements:', err);
+      logger.error('Error exporting stock movements:', err);
       setError("Erreur lors de l'export des mouvements");
     }
   };
@@ -224,7 +225,7 @@ const StockMovements = () => {
       setIsNewMovementModalOpen(false);
       // Real-time subscription will handle the insert
     } catch (err) {
-      console.error('Error creating movement:', err);
+      logger.error('Error creating movement:', err);
       setError('Erreur lors de la création du mouvement');
     }
   };

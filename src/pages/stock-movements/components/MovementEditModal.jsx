@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
+import { logger } from '../../../utils/logger';
 
 
 const MovementEditModal = ({ isOpen, onClose, movement, onSave, userRole }) => {
@@ -82,7 +83,7 @@ const MovementEditModal = ({ isOpen, onClose, movement, onSave, userRole }) => {
       
       onClose();
     } catch (error) {
-      console.error('Error saving correction:', error);
+      logger.error('Error saving correction:', error);
       setErrors({ submit: 'Erreur lors de la sauvegarde. Veuillez réessayer.' });
     } finally {
       setIsSubmitting(false);
