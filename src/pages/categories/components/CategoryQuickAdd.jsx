@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
+import { logger } from '../../../utils/logger';
 
 const CategoryQuickAdd = ({ onAdd, isLoading = false, inlineButton = false }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +50,7 @@ const CategoryQuickAdd = ({ onAdd, isLoading = false, inlineButton = false }) =>
       setIsOpen(false);
       resetForm();
     } catch (error) {
-      console.error('Error adding category:', error);
+      logger.error('Error adding category:', error);
       setErrors((prev) => ({
         ...prev,
         submit: error?.message || 'Échec de la création de la catégorie',

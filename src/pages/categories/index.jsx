@@ -6,9 +6,11 @@ import QuickActionBar from '../../components/ui/QuickActionBar';
 import CategoryQuickAdd from './components/CategoryQuickAdd';
 import CategoryList from './components/CategoryList';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
 import categoryService from '../../services/categoryService';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
+import { logger } from '../../utils/logger';
 
 const CategoriesPage = () => {
   const navigate = useNavigate();
@@ -27,6 +29,16 @@ const CategoriesPage = () => {
     }
   }, [currentCompany?.id]);
 
+  // Real-time subscription for categories
+  useRealtimeSubscription({
+    table: 'categories',
+    filter: currentCompany?.id ? { column: 'company_id', value: currentCompany?.id } : null,
+    enabled: !!currentCompany?.id,
+    onInsert: () => loadCategories(),
+    onUpdate: () => loadCategories(),
+    onDelete: () => loadCategories()
+  });
+
   const loadCategories = async () => {
     if (!currentCompany?.id) return;
     setIsLoading(true);
@@ -34,7 +46,7 @@ const CategoriesPage = () => {
       const data = await categoryService.getCategories(currentCompany.id);
       setCategories(data);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      logger.error('Error loading categories:', error);
       setCategories([]);
     } finally {
       setIsLoading(false);
@@ -46,7 +58,7 @@ const CategoriesPage = () => {
       await categoryService.createCategory(categoryData, currentCompany?.id);
       await loadCategories();
     } catch (error) {
-      console.error('Error adding category:', error);
+      logger.error('Error adding category:', error);
       throw error;
     }
   };
@@ -60,7 +72,7 @@ const CategoriesPage = () => {
       }
       await loadCategories();
     } catch (error) {
-      console.error('Error updating category:', error);
+      logger.error('Error updating category:', error);
       throw error;
     }
   };
@@ -70,7 +82,7 @@ const CategoriesPage = () => {
       await categoryService.deleteCategory(categoryId);
       await loadCategories();
     } catch (error) {
-      console.error('Error deleting category:', error);
+      logger.error('Error deleting category:', error);
       throw error;
     }
   };
@@ -80,7 +92,7 @@ const CategoriesPage = () => {
       await Promise.all(categoryIds.map((id) => categoryService.deleteCategory(id)));
       await loadCategories();
     } catch (error) {
-      console.error('Error bulk deleting categories:', error);
+      logger.error('Error bulk deleting categories:', error);
       throw error;
     }
   };

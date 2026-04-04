@@ -6,6 +6,7 @@ import CategoryItem from './CategoryItem';
 import CategoryEditModal from './CategoryEditModal';
 import CategoryDeleteModal from './CategoryDeleteModal';
 import BulkActionsBar from './BulkActionsBar';
+import useResponsive from '../../../hooks/useResponsive';
 
 const CategoryList = ({ 
   categories, 
@@ -14,6 +15,7 @@ const CategoryList = ({
   onBulkDelete,
   isLoading = false 
 }) => {
+  const { isMobile } = useResponsive();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -141,7 +143,81 @@ const CategoryList = ({
           onClear={() => setSelectedCategories([])}
         />
       )}
-      {/* Table */}
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <div className="divide-y divide-border">
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-text-muted">Chargement...</span>
+              </div>
+            </div>
+          ) : filteredCategories?.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="flex flex-col items-center space-y-3">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                  <Icon name="FolderTree" size={24} className="text-text-muted" />
+                </div>
+                <div>
+                  <p className="text-text-primary font-medium">Aucune catégorie trouvée</p>
+                  <p className="text-sm text-text-muted">{searchTerm ? 'Essayez de modifier votre recherche' : 'Commencez par créer votre première catégorie'}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            filteredCategories?.map((category) => (
+              <div key={category?.id} className="p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories?.includes(category?.id)}
+                        onChange={(e) => handleSelectCategory(category?.id, e?.target?.checked)}
+                        className="rounded border-border w-4 h-4"
+                      />
+                      <h3 className="font-semibold text-text-primary truncate">{category?.name}</h3>
+                    </div>
+                    {category?.description && (
+                      <p className="text-sm text-text-muted mb-2 line-clamp-2">{category?.description}</p>
+                    )}
+                    <div className="flex items-center space-x-4 text-xs text-text-muted">
+                      <span className="flex items-center space-x-1">
+                        <Icon name="Package" size={12} />
+                        <span>{category?.productCount || 0} produits</span>
+                      </span>
+                      <span className="flex items-center space-x-1">
+                        <Icon name="Calendar" size={12} />
+                        <span>{new Date(category?.createdAt)?.toLocaleDateString('fr-FR')}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-1 ml-2">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleEdit(category)}
+                      className="text-text-muted hover:text-text-primary w-8 h-8"
+                    >
+                      <Icon name="Edit" size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDelete(category)}
+                      className="text-text-muted hover:text-error w-8 h-8"
+                    >
+                      <Icon name="Trash2" size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+      /* Desktop Table View */
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted">
@@ -236,6 +312,7 @@ const CategoryList = ({
           </tbody>
         </table>
       </div>
+      )}
       {/* Modals */}
       {editingCategory && (
         <CategoryEditModal
