@@ -103,148 +103,298 @@ const NotificationSettingsTab = ({ userRole, onSave, currentCompanyId }) => {
     setHasChanges(true);
   };
 
-  const handleTestWebhook = async () => {
-    if (!settings?.webhookSettings?.url) {
-      setFeedback({ type: 'error', message: 'Ajoute une URL webhook avant le test.' });
-      return;
-    }
-
-    setTestingWebhook(true);
-    try {
-      const response = await fetch(settings.webhookSettings.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'settings.webhook.test',
-          sentAt: new Date().toISOString(),
-          companyId: currentCompanyId,
-          payload: { ok: true, source: 'stockflow-settings' }
-        })
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      setFeedback({ type: 'success', message: 'Test webhook envoyé avec succès.' });
-    } catch (error) {
-      logger.error('Webhook test failed:', error);
-      setFeedback({ type: 'error', message: `Erreur lors du test du webhook: ${error?.message || 'inconnue'}` });
-    } finally {
-      setTestingWebhook(false);
-    }
+  const handleThresholdChange = (key, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: parseInt(value, 10) || 0
+    }));
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
+    setFeedback(null);
+
     try {
-      localStorage.setItem('notificationSettings', JSON.stringify(settings));
-      await onSave('notifications', settings);
+      await onSave({ notifications: settings });
       setHasChanges(false);
-      setFeedback({ type: 'success', message: 'Notifications sauvegardées.' });
+      setFeedback({ type: 'success', message: 'Paramètres enregistrés avec succès.' });
     } catch (error) {
-      logger.error('Error saving settings:', error);
-      setFeedback({ type: 'error', message: error?.message || 'Erreur lors de la sauvegarde' });
+      setFeedback({ type: 'error', message: error?.message || 'Échec de l\'enregistrement.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleReset = async () => {
-    if (currentCompanyId) {
-      const { data } = await settingsService.getCompanySettings(currentCompanyId);
-      if (data?.notifications) {
-        setSettings((prev) => ({ ...prev, ...data.notifications }));
-        setHasChanges(false);
-      setFeedback({ type: 'success', message: 'Notifications sauvegardées.' });
-        return;
-      }
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch(settings?.webhookSettings?.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test: true, message: 'Test de notification StockFlow' })
+      });
+
+      if (!response.ok) throw new Error('Webhook unreachable');
+
+      setFeedback({ type: 'success', message: 'Webhook test réussi !' });
+    } catch (error) {
+      setFeedback({ type: 'error', message: 'Échec du test webhook. Vérifiez l\'URL.' });
+    } finally {
+      setTestingWebhook(false);
     }
-    const savedSettings = localStorage.getItem('notificationSettings');
-    if (savedSettings) setSettings(JSON.parse(savedSettings));
-    setHasChanges(false);
   };
 
+  // Card Component
+  const SettingsCard = ({ icon, title, description, children, className = '' }) => (
+    <div className={`bg-surface border border-border rounded-xl p-5 shadow-sm ${className}`}>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+          <Icon name={icon} size={20} className="text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+          {description && <p className="text-sm text-text-muted mt-0.5">{description}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      <InlineFeedback type={feedback?.type} message={feedback?.message} />
-      <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
-            <Icon name="AlertTriangle" size={20} className="text-warning" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Seuils d'alerte de stock</h3>
-            <p className="text-sm text-text-muted">Définir les seuils pour les alertes automatiques</p>
-          </div>
+    <div className="space-y-6">
+      {/* Header with Save Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary">Notifications</h2>
+          <p className="text-sm text-text-muted mt-1">
+            Configurez vos préférences de notification pour rester informé
+          </p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input label="Seuil de stock faible" type="number" value={settings?.lowStockThreshold}
-            onChange={(e) => handleSettingChange('lowStockThreshold', parseInt(e?.target?.value || '0', 10))} min="0" />
-          <Input label="Seuil de stock critique" type="number" value={settings?.criticalStockThreshold}
-            onChange={(e) => handleSettingChange('criticalStockThreshold', parseInt(e?.target?.value || '0', 10))} min="0" />
-        </div>
+        <Button
+          variant="default"
+          onClick={handleSave}
+          loading={isSaving}
+          disabled={!hasChanges}
+          className="min-w-[120px]"
+        >
+          <Icon name="Save" size={16} className="mr-2" />
+          Enregistrer
+        </Button>
       </div>
 
-      <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Icon name="Mail" size={20} className="text-primary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Notifications par email</h3>
-            <p className="text-sm text-text-muted">Configurer les types de notifications à recevoir</p>
-          </div>
-        </div>
+      {/* Feedback */}
+      {feedback && (
+        <InlineFeedback type={feedback.type} message={feedback.message} />
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Checkbox label="Alertes de stock faible" checked={settings?.emailNotifications?.lowStock} onChange={(e) => handleEmailNotificationChange('lowStock', e?.target?.checked)} />
-          <Checkbox label="Mouvements de stock" checked={settings?.emailNotifications?.stockMovements} onChange={(e) => handleEmailNotificationChange('stockMovements', e?.target?.checked)} />
-          <Checkbox label="Résumé quotidien" checked={settings?.emailNotifications?.dailyDigest} onChange={(e) => handleEmailNotificationChange('dailyDigest', e?.target?.checked)} />
-          <Checkbox label="Rapport hebdomadaire" checked={settings?.emailNotifications?.weeklyReport} onChange={(e) => handleEmailNotificationChange('weeklyReport', e?.target?.checked)} />
-          <Checkbox label="Alertes système" checked={settings?.emailNotifications?.systemAlerts} onChange={(e) => handleEmailNotificationChange('systemAlerts', e?.target?.checked)} />
-        </div>
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Email Notifications */}
+        <SettingsCard
+          icon="Mail"
+          title="Notifications Email"
+          description="Recevez des alertes et rapports par email"
+        >
+          <div className="space-y-3">
+            {[
+              { key: 'lowStock', label: 'Alertes stock faible', desc: 'Quand un produit atteint le seuil critique' },
+              { key: 'stockMovements', label: 'Mouvements de stock', desc: 'À chaque entrée ou sortie de stock' },
+              { key: 'dailyDigest', label: 'Récapitulatif quotidien', desc: 'Résumé des activités de la journée' },
+              { key: 'weeklyReport', label: 'Rapport hebdomadaire', desc: 'Bilan complet de la semaine' },
+              { key: 'systemAlerts', label: 'Alertes système', desc: 'Maintenance et notifications importantes' }
+            ].map(({ key, label, desc }) => (
+              <label key={key} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                <Checkbox
+                  checked={settings?.emailNotifications?.[key]}
+                  onChange={(e) => handleEmailNotificationChange(key, e?.target?.checked)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-text-primary">{label}</div>
+                  <div className="text-xs text-text-muted mt-0.5">{desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </SettingsCard>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Select label="Fréquence des notifications" options={frequencyOptions} value={settings?.notificationFrequency} onChange={(value) => handleSettingChange('notificationFrequency', value)} />
+        {/* Stock Thresholds */}
+        <SettingsCard
+          icon="AlertTriangle"
+          title="Seuils de Stock"
+          description="Définissez les niveaux d'alerte pour vos stocks"
+        >
           <div className="space-y-4">
-            <Checkbox label="Activer les heures de silence" checked={settings?.quietHours?.enabled} onChange={(e) => handleQuietHoursChange('enabled', e?.target?.checked)} />
-            {settings?.quietHours?.enabled && (
-              <div className="grid grid-cols-2 gap-4 ml-6">
-                <Input label="Début" type="time" value={settings?.quietHours?.startTime} onChange={(e) => handleQuietHoursChange('startTime', e?.target?.value)} />
-                <Input label="Fin" type="time" value={settings?.quietHours?.endTime} onChange={(e) => handleQuietHoursChange('endTime', e?.target?.value)} />
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Seuil d'alerte stock faible
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={settings?.lowStockThreshold || 10}
+                onChange={(e) => handleThresholdChange('lowStockThreshold', e?.target?.value)}
+                placeholder="ex: 10"
+                className="w-full"
+              />
+              <p className="text-xs text-text-muted mt-1.5">
+                Alertes déclenchées quand le stock atteint cette valeur
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Seuil critique (rupture)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={settings?.criticalStockThreshold || 0}
+                onChange={(e) => handleThresholdChange('criticalStockThreshold', e?.target?.value)}
+                placeholder="ex: 0"
+                className="w-full"
+              />
+              <p className="text-xs text-text-muted mt-1.5">
+                Alertes urgentes quand le stock atteint ce niveau
+              </p>
+            </div>
+          </div>
+        </SettingsCard>
+
+        {/* Webhook Settings */}
+        <SettingsCard
+          icon="Webhook"
+          title="Webhook"
+          description="Intégrez StockFlow avec vos outils externes"
+          className="lg:col-span-2"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                <Checkbox
+                  checked={settings?.webhookSettings?.enabled}
+                  onChange={(e) => handleWebhookSettingChange('enabled', e?.target?.checked)}
+                />
+                <span className="text-sm font-medium text-text-primary">Activer le webhook</span>
+              </label>
+
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  URL du webhook
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    value={settings?.webhookSettings?.url || ''}
+                    onChange={(e) => handleWebhookSettingChange('url', e?.target?.value)}
+                    placeholder="https://votre-app.com/webhook"
+                    disabled={!settings?.webhookSettings?.enabled}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleTestWebhook}
+                    loading={testingWebhook}
+                    disabled={!settings?.webhookSettings?.enabled || !settings?.webhookSettings?.url}
+                    className="shrink-0"
+                  >
+                    <Icon name="Wifi" size={16} className="mr-2" />
+                    Tester
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </div>
 
-      <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-            <Icon name="Webhook" size={20} className="text-secondary" />
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-3">
+                Événements à notifier
+              </label>
+              <div className="space-y-2">
+                {[
+                  { key: 'stockAlert', label: 'Alertes stock' },
+                  { key: 'productUpdate', label: 'Mises à jour produits' },
+                  { key: 'userActivity', label: 'Activité utilisateurs' }
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                    <Checkbox
+                      checked={settings?.webhookSettings?.events?.[key]}
+                      onChange={(e) => handleWebhookEventChange(key, e?.target?.checked)}
+                      disabled={!settings?.webhookSettings?.enabled}
+                    />
+                    <span className="text-sm text-text-primary">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary">Webhook</h3>
-            <p className="text-sm text-text-muted">Envoyer certains événements vers une URL externe</p>
-          </div>
-        </div>
+        </SettingsCard>
 
-        <div className="space-y-4">
-          <Checkbox label="Activer les webhooks" checked={settings?.webhookSettings?.enabled} onChange={(e) => handleWebhookSettingChange('enabled', e?.target?.checked)} />
-          <Input label="URL du webhook" type="url" placeholder="https://..." value={settings?.webhookSettings?.url} onChange={(e) => handleWebhookSettingChange('url', e?.target?.value)} />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Checkbox label="Alertes stock" checked={settings?.webhookSettings?.events?.stockAlert} onChange={(e) => handleWebhookEventChange('stockAlert', e?.target?.checked)} />
-            <Checkbox label="Mise à jour produit" checked={settings?.webhookSettings?.events?.productUpdate} onChange={(e) => handleWebhookEventChange('productUpdate', e?.target?.checked)} />
-            <Checkbox label="Activité utilisateur" checked={settings?.webhookSettings?.events?.userActivity} onChange={(e) => handleWebhookEventChange('userActivity', e?.target?.checked)} />
-          </div>
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleTestWebhook} loading={testingWebhook}>Tester le webhook</Button>
-          </div>
-        </div>
-      </div>
+        {/* Quiet Hours */}
+        <SettingsCard
+          icon="Moon"
+          title="Heures Calmes"
+          description="Ne recevez pas de notifications pendant vos heures de repos"
+        >
+          <label className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border mb-4">
+            <Checkbox
+              checked={settings?.quietHours?.enabled}
+              onChange={(e) => handleQuietHoursChange('enabled', e?.target?.checked)}
+            />
+            <span className="text-sm font-medium text-text-primary">Activer les heures calmes</span>
+          </label>
 
-      <div className="flex items-center justify-end space-x-4 pt-6 border-t border-border">
-        <Button variant="outline" onClick={handleReset} disabled={!hasChanges}>Annuler</Button>
-        <Button variant="default" onClick={handleSave} loading={isSaving} disabled={!hasChanges}>Sauvegarder les notifications</Button>
+          {settings?.quietHours?.enabled && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Début
+                </label>
+                <Input
+                  type="time"
+                  value={settings?.quietHours?.startTime || '22:00'}
+                  onChange={(e) => handleQuietHoursChange('startTime', e?.target?.value)}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Fin
+                </label>
+                <Input
+                  type="time"
+                  value={settings?.quietHours?.endTime || '08:00'}
+                  onChange={(e) => handleQuietHoursChange('endTime', e?.target?.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+        </SettingsCard>
+
+        {/* Notification Frequency */}
+        <SettingsCard
+          icon="Clock"
+          title="Fréquence"
+          description="À quelle fréquence recevoir les notifications"
+        >
+          <Select
+            options={frequencyOptions}
+            value={settings?.notificationFrequency || 'immediate'}
+            onChange={(e) => handleSettingChange('notificationFrequency', e?.target?.value)}
+            className="w-full"
+          />
+          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
+            <div className="flex items-start gap-2">
+              <Icon name="Info" size={16} className="text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-text-muted">
+                La fréquence s'applique aux notifications non-critiques. Les alertes urgentes sont toujours envoyées immédiatement.
+              </p>
+            </div>
+          </div>
+        </SettingsCard>
       </div>
     </div>
   );
