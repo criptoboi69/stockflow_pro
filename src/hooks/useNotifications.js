@@ -54,7 +54,12 @@ export const useNotifications = () => {
           description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
           timestamp: m?.created_at || new Date().toISOString(),
           read: readIds.has(`movement_${m?.id}`),
-          navigateTo: `/stock-movements?id=${m?.id}`,
+          onClick: () => {
+            // Store movement ID in localStorage for modal to pick up
+            localStorage.setItem('openMovementModal', m?.id);
+            // Navigate to movements page
+            window.location.href = `/stock-movements`;
+          },
           metadata: {
             movementId: m?.id,
             productId: m?.product_id,
@@ -84,7 +89,12 @@ export const useNotifications = () => {
               description: `${p?.name} - ${p?.quantity || 0}/${p?.min_stock || 0}`,
               timestamp: p?.updated_at || p?.created_at || new Date().toISOString(),
               read: readIds.has(`alert_${p?.id}`),
-              navigateTo: `/products?id=${p?.id}`,
+              onClick: () => {
+                // Store product ID in localStorage for modal to pick up
+                localStorage.setItem('openProductModal', p?.id);
+                // Navigate to products page
+                window.location.href = `/products`;
+              },
               metadata: {
                 productId: p?.id,
                 quantity: p?.quantity,

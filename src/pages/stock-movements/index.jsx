@@ -68,16 +68,24 @@ const StockMovements = () => {
     }
   }, [currentCompany, authLoading]);
 
-  // Open movement details modal from URL param (for notifications)
+  // Open movement details modal from URL param or localStorage (for notifications)
   useEffect(() => {
-    const movementId = searchParams?.get('id');
-    if (!movementId || !movements?.length) return;
+    if (!movements?.length) return;
+    
+    // Check localStorage first (for notifications)
+    const storedMovementId = localStorage.getItem('openMovementModal');
+    const urlMovementId = searchParams?.get('id');
+    const movementId = storedMovementId || urlMovementId;
+    
+    if (!movementId) return;
 
     const target = movements.find((m) => m?.id === movementId);
     if (!target) return;
 
     setSelectedMovementForDetails(target);
     setIsDetailsModalOpen(true);
+    // Clear the localStorage flag
+    localStorage.removeItem('openMovementModal');
   }, [searchParams, movements]);
 
   const loadMovements = async () => {

@@ -144,7 +144,11 @@ const Products = () => {
   useEffect(() => {
     if (isLoading || !products?.length) return;
     
-    const productId = searchParams?.get('product') || searchParams?.get('id');
+    // Check localStorage first (for notifications)
+    const storedProductId = localStorage.getItem('openProductModal');
+    const urlProductId = searchParams?.get('product') || searchParams?.get('id');
+    const productId = storedProductId || urlProductId;
+    
     if (!productId) return;
     
     // Already opened
@@ -157,6 +161,8 @@ const Products = () => {
     setTimeout(() => {
       setModalState({ isOpen: true, mode: 'view', product: target });
       setOpenedFromNotification(productId);
+      // Clear the localStorage flag
+      localStorage.removeItem('openProductModal');
     }, 300);
   }, [products, isLoading, searchParams, openedFromNotification]);
 
