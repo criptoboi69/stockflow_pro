@@ -12,6 +12,7 @@ import locationService from '../../../services/locationService';
 import categoryService from '../../../services/categoryService';
 import productService from '../../../services/productService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { logger } from '../../../utils/logger';
 
 const ProductModal = ({ 
   isOpen, 
@@ -42,7 +43,6 @@ const ProductModal = ({
   const [errors, setErrors] = useState({});
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadDebug, setUploadDebug] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [pendingImageFiles, setPendingImageFiles] = useState([]);
   const [pendingImagePreviews, setPendingImagePreviews] = useState([]);
@@ -67,7 +67,7 @@ const ProductModal = ({
         setCategories(categoryData || []);
         setLocations(locationData || []);
       } catch (error) {
-        console.error('Error loading product metadata:', error);
+        logger.error('Error loading product metadata:', error);
         setCategories([]);
         setLocations([]);
       }
@@ -208,33 +208,16 @@ const ProductModal = ({
 
     setIsLoading(true);
     try {
-      console.log('[product-modal] handleSave start', {
-        pendingImageFiles: pendingImageFiles.length,
-        existingImages: (formData?.imageUrls || []).length,
-        productId: product?.id || null
-      });
-      setUploadDebug(`handleSave start | pending=${pendingImageFiles.length} | existing=${(formData?.imageUrls || []).length}`);
       let nextFormData = { ...formData };
 
       if (pendingImageFiles.length > 0) {
         setUploadingImage(true);
         const productId = product?.id || `temp_${Date.now()}`;
         const uploaded = [];
-        setUploadDebug(`Upload démarré (${pendingImageFiles.length} image(s))...`);
         for (const file of pendingImageFiles) {
-          setUploadDebug(`Avant uploadWithTimeout | ${file?.name || 'image'} | ${Math.round((file?.size || 0) / 1024)} KB`);
-          console.log('[product-modal] before uploadWithTimeout', {
-            name: file?.name,
-            size: file?.size,
-            type: file?.type,
-            productId
-          });
           const { publicUrl, filePath } = await uploadWithTimeout(file, productId, 45000);
-          console.log('[product-modal] after uploadWithTimeout', { publicUrl, filePath });
-          setUploadDebug(`Après uploadWithTimeout | reçu=${publicUrl ? 'oui' : 'non'}`);
           if (publicUrl) uploaded.push({ publicUrl, filePath });
         }
-        setUploadDebug(`Upload terminé: ${uploaded.length} image(s) envoyée(s).`);
         const existingUrls = Array.isArray(nextFormData?.imageUrls) ? nextFormData.imageUrls : [];
         const existingPaths = Array.isArray(nextFormData?.imageFilePaths) ? nextFormData.imageFilePaths : [];
         const nextUrls = [...existingUrls, ...uploaded.map(i => i.publicUrl)].slice(0, 5);
@@ -249,9 +232,7 @@ const ProductModal = ({
       }
 
       if (mode === 'edit' && product?.id) {
-        setUploadDebug('Sauvegarde directe du produit...');
         await productService.updateProduct(product.id, nextFormData);
-        setUploadDebug('Produit enregistré avec succès.');
         onClose();
         setTimeout(() => window.location.reload(), 150);
         return;
@@ -260,7 +241,7 @@ const ProductModal = ({
       await onSave(nextFormData);
       onClose();
     } catch (error) {
-      console.error('Error saving product:', error);
+      logger.error('Error saving product:', error);
       setErrors(prev => ({
         ...prev,
         submit: error?.message || 'Échec de l\'enregistrement du produit'
@@ -337,7 +318,6 @@ const ProductModal = ({
     return Promise.race([
       storageService?.uploadProductImage(file, productId),
       new Promise((_, reject) => setTimeout(() => {
-        setUploadDebug(`Timeout après ${Math.round(timeoutMs / 1000)}s sur ${file?.name || 'image'}`);
         reject(new Error('Timeout upload image'));
       }, timeoutMs))
     ]);
@@ -350,7 +330,6 @@ const ProductModal = ({
     try {
       const uploaded = [];
       for (const file of files) {
-        setUploadDebug(`Upload direct produit: ${file?.name || 'image'}...`);
         const { publicUrl, filePath } = await uploadWithTimeout(file, product.id, 45000);
         if (publicUrl) uploaded.push({ publicUrl, filePath });
       }
@@ -376,10 +355,9 @@ const ProductModal = ({
         imageUrls: nextUrls,
         imageFilePaths: nextPaths
       }));
-      setUploadDebug(`Image(s) enregistrée(s) immédiatement sur le produit.`);
       return true;
     } catch (error) {
-      console.error('Direct product image persistence failed:', error);
+      logger.error('Direct product image persistence failed:', error);
       setErrors((prev) => ({ ...prev, imageUrl: error?.message || "Échec du téléchargement de l'image." }));
       throw error;
     } finally {
@@ -390,7 +368,6 @@ const ProductModal = ({
   const handleImageUpload = async (file) => {
     try {
       setErrors(prev => ({ ...prev, imageUrl: '' }));
-      setUploadDebug(`Fichier ajouté localement: ${file?.name || 'image'} (${Math.round((file?.size || 0) / 1024)} KB)`);
       const currentCount = [...(formData?.imageUrls || []), ...pendingImagePreviews].filter(Boolean).length;
       if (currentCount >= 5) return;
 
@@ -403,7 +380,7 @@ const ProductModal = ({
       setPendingImageFiles(prev => [...prev, file].slice(0, 5));
       setPendingImagePreviews(prev => [...prev, previewUrl].slice(0, 5));
     } catch (error) {
-      console.error('Image local add failed:', error);
+      logger.error('Image local add failed:', error);
       setErrors(prev => ({ ...prev, imageUrl: error?.message || "Impossible d'ajouter la photo." }));
       throw error;
     }
@@ -645,9 +622,6 @@ const ProductModal = ({
                   )}
                   {errors?.imageUrl && (
                     <div className="mt-2 rounded-md border border-error/20 bg-error/10 p-3 text-sm text-destructive">{errors?.imageUrl}</div>
-                  )}
-                  {uploadDebug && (
-                    <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-text-muted">{uploadDebug}</div>
                   )}
 
                   <div className="mt-3 space-y-2">

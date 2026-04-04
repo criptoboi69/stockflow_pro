@@ -19,6 +19,7 @@ import QRCodeGenerator from './components/QRCodeGenerator';
 import NewMovementModal from '../stock-movements/components/NewMovementModal';
 import Icon from '../../components/AppIcon';
 import PageHeader from '../../components/ui/PageHeader';
+import { logger } from '../../utils/logger';
 
 const Products = () => {
   const navigate = useNavigate();
@@ -33,19 +34,19 @@ const Products = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filter State
+  // Filter State (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams?.get('search') || '');
   const [selectedStatus, setSelectedStatus] = useState(searchParams?.get('status') || 'all');
   const [selectedCategory, setSelectedCategory] = useState(searchParams?.get('category') || 'all');
+  const [sortField, setSortField] = useState(searchParams?.get('sort') || 'name');
+  const [sortDirection, setSortDirection] = useState(searchParams?.get('order') || 'asc');
 
   // Selection State
   const [selectedProducts, setSelectedProducts] = useState([]);
 
-  // Pagination State
+  // Pagination State (synced with URL)
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams?.get('page')) || 1);
   const [pageSize, setPageSize] = useState(parseInt(searchParams?.get('pageSize')) || 25);
-  const [sortField, setSortField] = useState('name');
-  const [sortDirection, setSortDirection] = useState('asc');
 
   // Modal State
   const [modalState, setModalState] = useState({
@@ -116,7 +117,7 @@ const Products = () => {
           ...(categories || []).map((category) => ({ value: category.name, label: category.name })),
         ]);
       } catch (error) {
-        console.error('[Products] Error loading categories:', error);
+        logger.error('[Products] Error loading categories:', error);
         setCategoryOptions([{ value: 'all', label: 'Toutes les catégories' }]);
       }
     };
@@ -173,7 +174,7 @@ const Products = () => {
       const data = await productService?.getProducts(currentCompany?.id);
       setProducts(data);
     } catch (err) {
-      console.error('[Products] Error loading products:', err);
+      logger.error('[Products] Error loading products:', err);
       setError('Erreur lors du chargement des produits');
     } finally {
       setIsLoading(false);
@@ -185,35 +186,16 @@ const Products = () => {
     const productId = searchParams?.get('product') || searchParams?.get('id');
     const modeFromUrl = searchParams?.get('mode');
     
-    console.log('[Products] useEffect notification check:', {
-      productId,
-      modeFromUrl,
-      productsLoaded: products?.length || 0,
-      openedFromNotification,
-      willOpen: productId && products?.length > 0 && openedFromNotification !== productId
-    });
-    
     // Wait for products to be loaded
-    if (!productId || !products || products.length === 0) {
-      console.log('[Products] Skipping: no productId or products not loaded');
-      return;
-    }
+    if (!productId || !products || products.length === 0) return;
     
     // Prevent opening multiple times for same product
-    if (openedFromNotification === productId) {
-      console.log('[Products] Skipping: already opened this product');
-      return;
-    }
+    if (openedFromNotification === productId) return;
 
     const target = products.find((p) => p?.id === productId);
-    console.log('[Products] Found target:', target);
-    if (!target) {
-      console.log('[Products] Skipping: target not found in products list');
-      return;
-    }
+    if (!target) return;
 
     if (modeFromUrl === 'add-movement') {
-      console.log('[Products] Opening movement modal');
       setMovementModalState({ isOpen: true, product: target });
       setOpenedFromNotification(productId);
       return;
@@ -221,7 +203,6 @@ const Products = () => {
 
     // Open in view mode by default (for notifications)
     const modalMode = modeFromUrl === 'edit' ? 'edit' : 'view';
-    console.log('[Products] Opening product modal in', modalMode, 'mode');
     setModalState({ isOpen: true, mode: modalMode, product: target });
     setOpenedFromNotification(productId);
   }, [searchParams, products, openedFromNotification]);
@@ -257,12 +238,14 @@ const Products = () => {
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedProducts = filteredProducts?.slice(startIndex, startIndex + pageSize);
 
-  // Update URL params
+  // Update URL params (filters, sort, pagination)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params?.set('search', searchQuery);
     if (selectedStatus !== 'all') params?.set('status', selectedStatus);
     if (selectedCategory !== 'all') params?.set('category', selectedCategory);
+    if (sortField !== 'name') params?.set('sort', sortField);
+    if (sortDirection !== 'asc') params?.set('order', sortDirection);
     if (currentPage > 1) params?.set('page', currentPage?.toString());
     if (pageSize !== 25) params?.set('pageSize', pageSize?.toString());
 
@@ -274,7 +257,7 @@ const Products = () => {
     if (linkedQr) params.set('qr', linkedQr);
 
     setSearchParams(params);
-  }, [searchQuery, selectedStatus, selectedCategory, currentPage, pageSize, setSearchParams, searchParams]);
+  }, [searchQuery, selectedStatus, selectedCategory, sortField, sortDirection, currentPage, pageSize, setSearchParams, searchParams]);
 
   // Keep user-selected view mode on mobile too.
 
@@ -361,7 +344,7 @@ const Products = () => {
       await loadProducts();
       setQrModalState((prev) => ({ ...prev, product: { ...prev.product, qrCode: qrData } }));
     } catch (err) {
-      console.error('Error saving QR code:', err);
+      logger.error('Error saving QR code:', err);
       const backendMsg = err?.message || err?.error_description || err?.details;
       setError(backendMsg ? `Erreur lors de l'enregistrement du QR code: ${backendMsg}` : "Erreur lors de l'enregistrement du QR code");
       throw err;
@@ -378,7 +361,7 @@ const Products = () => {
       setMovementModalState({ isOpen: false, product: null });
       await loadProducts();
     } catch (err) {
-      console.error('Error creating movement from products page:', err);
+      logger.error('Error creating movement from products page:', err);
       const backendMsg = err?.message || err?.error_description || err?.details;
       setError(backendMsg ? `Erreur lors de la création du mouvement: ${backendMsg}` : 'Erreur lors de la création du mouvement');
       throw err;
@@ -387,12 +370,6 @@ const Products = () => {
 
   const handleSaveProduct = async (productData) => {
     try {
-      console.log('[products] handleSaveProduct start', {
-        mode: modalState?.mode,
-        productId: modalState?.product?.id,
-        imageUrls: productData?.imageUrls?.length || 0,
-        imageFilePaths: productData?.imageFilePaths?.length || 0
-      });
       setIsLoading(true);
       
       if (modalState?.mode === 'add') {
