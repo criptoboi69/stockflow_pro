@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const { currentRole, currentCompany } = useAuth();
+  const [products, setProducts] = useState([]);
   const [kpiData, setKpiData] = useState([
     {
       title: 'Total Produits',
@@ -66,7 +67,8 @@ const Dashboard = () => {
       try {
         setLoading(true);
         const stats = await productService.getProductStats(currentCompany.id);
-        const products = await productService.getProducts(currentCompany.id);
+        const productsData = await productService.getProducts(currentCompany.id);
+        setProducts(productsData);
 
         const totalProducts = Number(stats?.totalProducts || 0);
         const totalQuantity = Number(stats?.totalQuantity || 0);
@@ -99,7 +101,7 @@ const Dashboard = () => {
           }
         ]);
 
-        const alerts = products
+        const alerts = productsData
           .filter((p) => (p?.status === 'low_stock' || p?.status === 'out_of_stock' || Number(p?.quantity || 0) <= Number(p?.min_stock || 0)))
           .slice(0, 5)
           .map((p) => ({
@@ -114,26 +116,23 @@ const Dashboard = () => {
 
         // Load recent stock movements for activity timeline
         try {
-          const movements = await stockMovementService.getStockMovements(
-            currentCompany.id,
-            { page: 1, pageSize: 10 }
-          );
+          const movements = await stockMovementService.getStockMovements(currentCompany.id);
           
-          const activities = (movements || []).map((m) => ({
+          const activities = (movements || []).slice(0, 10).map((m) => ({
             id: m?.id,
             type: m?.movement_type === 'in' ? 'stock_in' : 
                   m?.movement_type === 'out' ? 'stock_out' : 'adjustment',
             title: m?.movement_type === 'in' ? 'Entrée de stock' :
                    m?.movement_type === 'out' ? 'Sortie de stock' : 'Ajustement',
-            description: `${m?.product_name || 'Produit'} (${m?.quantity || 0} unités)`,
-            user: m?.created_by_email || 'Système',
+            description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
+            user: m?.user?.full_name || 'Système',
             timestamp: m?.created_at || new Date().toISOString()
           }));
           setRecentActivities(activities);
         } catch (error) {
           logger.error('Error loading stock movements for dashboard:', error);
           // Fallback to products-based activities
-          const activities = products.slice(0, 5).map((p) => ({
+          const activities = productsData.slice(0, 5).map((p) => ({
             id: p?.id,
             type: 'product_added',
             title: 'Produit disponible',
@@ -145,7 +144,7 @@ const Dashboard = () => {
         }
 
         // Memoized inventory value calculation
-        const inventoryValue = products.reduce((acc, p) => 
+        const inventoryValue = productsData.reduce((acc, p) => 
           acc + (Number(p?.quantity || 0) * Number(p?.price || 0)), 0
         );
         const currency = companySettings?.currency || 'EUR';
