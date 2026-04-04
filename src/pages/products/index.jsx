@@ -140,6 +140,26 @@ const Products = () => {
     }
   }, [currentCompany, authLoading]);
 
+  // Check if we need to open a product modal after loading
+  useEffect(() => {
+    if (isLoading || !products?.length) return;
+    
+    const productId = searchParams?.get('product') || searchParams?.get('id');
+    if (!productId) return;
+    
+    // Already opened
+    if (openedFromNotification === productId) return;
+    
+    const target = products.find((p) => p?.id === productId);
+    if (!target) return;
+    
+    // Open modal after a short delay to ensure UI is ready
+    setTimeout(() => {
+      setModalState({ isOpen: true, mode: 'view', product: target });
+      setOpenedFromNotification(productId);
+    }, 300);
+  }, [products, isLoading, searchParams, openedFromNotification]);
+
   const loadProducts = async () => {
     try {
       setIsLoading(true);
