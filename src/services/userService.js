@@ -315,33 +315,61 @@ export const userService = {
 
   async openSignup({ email, password, firstName, lastName, companyId }) {
     try {
-      // Create user via Supabase Auth
-      const { data: authData, error: authError } = await supabase?.auth?.signUp({
-        email,
-        password
-      });
-
-      if (authError) throw authError;
-      if (!authData?.user) throw new Error('Failed to create user');
-
-      // Create user profile
-      const { error: profileError } = await supabase
+      // Check if user profile already exists
+      const { data: existingProfile } = await supabase
         .from('user_profiles')
-        .insert({
-          id: authData.user.id,
+        .select('id, email')
+        .eq('email', email)
+        .single();
+
+      let userId;
+
+      if (existingProfile) {
+        // User already exists - just add to company
+        userId = existingProfile.id;
+        
+        // Check if already member of this company
+        const { data: existingRole } = await supabase
+          .from('user_company_roles')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('company_id', companyId)
+          .single();
+        
+        if (existingRole) {
+          return { data: { success: true, alreadyMember: true }, error: null };
+        }
+      } else {
+        // Create new user via Supabase Auth
+        const { data: authData, error: authError } = await supabase?.auth?.signUp({
           email,
-          first_name: firstName,
-          last_name: lastName,
-          full_name: `${firstName} ${lastName}`.trim()
+          password
         });
 
-      if (profileError) throw profileError;
+        if (authError) throw authError;
+        if (!authData?.user) throw new Error('Failed to create user');
+
+        userId = authData.user.id;
+
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`.trim()
+          });
+
+        if (profileError) throw profileError;
+      }
 
       // Add user to company with default role (member)
       const { error: roleError } = await supabase
         .from('user_company_roles')
         .insert({
-          user_id: authData.user.id,
+          user_id: userId,
           company_id: companyId,
           role: 'member'
         });

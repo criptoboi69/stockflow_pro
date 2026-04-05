@@ -112,6 +112,13 @@ const AcceptInvitation = () => {
           companyId
         });
         if (error) throw error;
+        
+        if (data?.alreadyMember) {
+          setError('Tu es déjà membre de cette entreprise');
+          setAccepting(false);
+          return;
+        }
+        
         setSuccess(true);
       }
       
