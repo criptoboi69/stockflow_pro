@@ -57,7 +57,7 @@ export const useNotifications = () => {
 
         allNotifications.push(...movementNotifications);
       } catch (err) {
-        console.warn('Error fetching movements for notifications:', err);
+        // Keep notifications resilient: movements failure should not block stock alerts.
       }
 
       // Fetch low stock alerts
@@ -82,7 +82,7 @@ export const useNotifications = () => {
 
         allNotifications.push(...lowStockProducts);
       } catch (err) {
-        console.warn('Error fetching products for notifications:', err);
+        // Keep notifications resilient: product alerts failure should not block movement notifications.
       }
 
       // Sort by timestamp (newest first)
@@ -93,7 +93,6 @@ export const useNotifications = () => {
       // Limit to MAX_NOTIFICATIONS
       setNotifications(allNotifications.slice(0, MAX_NOTIFICATIONS));
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       setError(err);
     } finally {
       setLoading(false);

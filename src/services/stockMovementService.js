@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 class StockMovementService {
   /**
@@ -32,7 +33,7 @@ class StockMovementService {
       // Convert snake_case to camelCase
       return data?.map(movement => this.convertToCamelCase(movement)) || [];
     } catch (error) {
-      console.error('Error fetching stock movements:', error);
+      logger.error('Error fetching stock movements:', error);
       throw error;
     }
   }
@@ -67,7 +68,7 @@ class StockMovementService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error fetching stock movement:', error);
+      logger.error('Error fetching stock movement:', error);
       throw error;
     }
   }
@@ -152,7 +153,7 @@ class StockMovementService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error creating stock movement:', error);
+      logger.error('Error creating stock movement:', error);
       throw error;
     }
   }
@@ -191,7 +192,7 @@ class StockMovementService {
 
       return this.convertToCamelCase(data);
     } catch (error) {
-      console.error('Error updating stock movement:', error);
+      logger.error('Error updating stock movement:', error);
       throw error;
     }
   }
@@ -210,7 +211,7 @@ class StockMovementService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting stock movement:', error);
+      logger.error('Error deleting stock movement:', error);
       throw error;
     }
   }
@@ -245,7 +246,7 @@ class StockMovementService {
 
       return data?.map(movement => this.convertToCamelCase(movement)) || [];
     } catch (error) {
-      console.error('Error fetching product movements:', error);
+      logger.error('Error fetching product movements:', error);
       throw error;
     }
   }

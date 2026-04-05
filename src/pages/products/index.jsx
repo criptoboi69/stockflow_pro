@@ -377,18 +377,12 @@ const Products = () => {
           /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
 
         const safeUserId = isUuid(user?.id) ? user?.id : null;
-        console.log('[products] createProduct start');
         await productService?.createProduct(productData, currentCompany?.id, safeUserId);
-        console.log('[products] createProduct done');
       } else if (modalState?.mode === 'edit') {
-        console.log('[products] updateProduct start');
         await productService?.updateProduct(modalState?.product?.id, productData);
-        console.log('[products] updateProduct done');
       }
       
-      console.log('[products] loadProducts start after save');
       await loadProducts();
-      console.log('[products] loadProducts done after save');
       handleCloseModal();
     } catch (err) {
       console.error('Error saving product:', err);

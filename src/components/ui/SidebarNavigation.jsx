@@ -5,6 +5,7 @@ import ThemeToggle from './ThemeToggle';
 import NotificationBell from './NotificationBell';
 import useNotifications from '../../hooks/useNotifications';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../utils/logger';
 
 const SidebarNavigation = ({
   isCollapsed = false,
@@ -26,7 +27,9 @@ const SidebarNavigation = ({
     currentRole = auth?.currentRole || null;
     signOut = auth?.signOut || null;
     canEdit = auth?.canEdit || null;
-  } catch (e) { console.warn('Auth not ready:', e); }
+  } catch (e) {
+    logger.debug('Sidebar auth not ready yet:', e);
+  }
   const tenantName = currentCompany?.name || (typeof currentTenant === 'string' ? currentTenant : currentTenant?.name) || 'StockFlow Pro';
   const displayName = profile?.full_name || profile?.email?.split('@')?.[0] || 'Utilisateur';
   
@@ -167,7 +170,7 @@ const SidebarNavigation = ({
     try {
       if (signOut) await signOut();
     } catch (e) {
-      console.error('Logout failed:', e);
+      logger.error('Logout failed:', e);
     }
   };
 
