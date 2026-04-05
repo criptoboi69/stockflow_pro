@@ -369,7 +369,7 @@ export const userService = {
       const { data: roleResult, error: roleError } = await supabase.rpc('add_user_to_company', {
         p_user_id: userId,
         p_company_id: companyId,
-        p_role: 'member'
+        p_role: 'employee'  // Default role for new signups
       });
 
       if (roleError) throw roleError;

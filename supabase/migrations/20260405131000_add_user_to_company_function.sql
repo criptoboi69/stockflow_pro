@@ -8,7 +8,7 @@ DROP FUNCTION IF EXISTS add_user_to_company(uuid, uuid, text);
 CREATE OR REPLACE FUNCTION add_user_to_company(
   p_user_id uuid,
   p_company_id uuid,
-  p_role text DEFAULT 'member'
+  p_role text DEFAULT 'employee'
 )
 RETURNS json
 LANGUAGE plpgsql
