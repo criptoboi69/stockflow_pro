@@ -15,6 +15,7 @@ import productService from '../../services/productService';
 import stockMovementService from '../../services/stockMovementService';
 import useCompanySettings from '../../hooks/useCompanySettings';
 import { logger } from '../../utils/logger';
+import { mapMovementToActivity, mapProductToActivity, mapProductToStockAlert } from '../../utils/uiMappers';
 
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -109,51 +110,19 @@ const Dashboard = () => {
             Number(product?.quantity || 0) <= Number(product?.minStock || 0)
           ))
           .slice(0, 5)
-          .map((product) => ({
-            id: product?.id,
-            productName: product?.name,
-            sku: product?.sku,
-            currentStock: Number(product?.quantity || 0),
-            minStock: Number(product?.minStock || 0),
-            location: product?.location || 'N/A'
-          }));
+          .map(mapProductToStockAlert);
         setStockAlerts(alerts);
 
         // Load recent stock movements for activity timeline
         try {
           const movements = await stockMovementService.getStockMovements(currentCompany.id);
 
-          const activities = (movements || []).slice(0, 10).map((movement) => {
-            const movementKind = movement?.type;
-            return {
-              id: movement?.id,
-              type: movementKind === 'receipt'
-                ? 'stock_in'
-                : movementKind === 'issue'
-                  ? 'stock_out'
-                  : 'adjustment',
-              title: movementKind === 'receipt'
-                ? 'Entrée de stock'
-                : movementKind === 'issue'
-                  ? 'Sortie de stock'
-                  : 'Ajustement',
-              description: `${movement?.product?.name || 'Produit'} (${movement?.quantity || 0} unités)`,
-              user: movement?.user?.fullName || 'Système',
-              timestamp: movement?.createdAt || new Date().toISOString()
-            };
-          });
+          const activities = (movements || []).slice(0, 10).map(mapMovementToActivity);
           setRecentActivities(activities);
         } catch (error) {
           logger.error('Error loading stock movements for dashboard:', error);
           // Fallback to products-based activities
-          const activities = productsData.slice(0, 5).map((product) => ({
-            id: product?.id,
-            type: 'product_added',
-            title: 'Produit disponible',
-            description: `${product?.name} (${product?.sku || 'N/A'})`,
-            user: 'Système',
-            timestamp: product?.updatedAt || product?.createdAt || new Date().toISOString()
-          }));
+          const activities = productsData.slice(0, 5).map(mapProductToActivity);
           setRecentActivities(activities);
         }
 

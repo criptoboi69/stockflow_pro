@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import stockMovementService from '../services/stockMovementService';
 import productService from '../services/productService';
 import safeStorage from '../utils/safeStorage';
+import { mapMovementToNotification, mapProductToNotification } from '../utils/uiMappers';
 
 const STORAGE_KEY = 'notification_read_ids';
 const MAX_NOTIFICATIONS = 20;
@@ -45,38 +46,14 @@ export const useNotifications = () => {
       try {
         const movements = await stockMovementService.getStockMovements(currentCompany.id);
 
-        const movementNotifications = (movements || []).slice(0, 10).map((movement) => {
-          const movementKind = movement?.type;
-          const notificationType = movementKind === 'receipt'
-            ? 'stock_in'
-            : movementKind === 'issue'
-              ? 'stock_out'
-              : 'adjustment';
-
-          const title = movementKind === 'receipt'
-            ? 'Entrée de stock'
-            : movementKind === 'issue'
-              ? 'Sortie de stock'
-              : 'Ajustement de stock';
-
-          return {
-            id: `movement_${movement?.id}`,
-            type: notificationType,
-            title,
-            description: `${movement?.product?.name || 'Produit'} (${movement?.quantity || 0} unités)`,
-            timestamp: movement?.createdAt || new Date().toISOString(),
-            read: readIds.has(`movement_${movement?.id}`),
-            onClick: () => {
-              localStorage.setItem('openMovementModal', movement?.id);
-              window.location.href = `/stock-movements`;
-            },
-            metadata: {
-              movementId: movement?.id,
-              productId: movement?.productId,
-              quantity: movement?.quantity
-            }
-          };
-        });
+        const movementNotifications = (movements || []).slice(0, 10).map((movement) => ({
+          ...mapMovementToNotification(movement),
+          read: readIds.has(`movement_${movement?.id}`),
+          onClick: () => {
+            localStorage.setItem('openMovementModal', movement?.id);
+            window.location.href = `/stock-movements`;
+          }
+        }));
 
         allNotifications.push(...movementNotifications);
       } catch (err) {
@@ -94,26 +71,14 @@ export const useNotifications = () => {
             Number(product?.quantity || 0) <= Number(product?.minStock || 0)
           ))
           .slice(0, 10)
-          .map((product) => {
-            const isOutOfStock = Number(product?.quantity || 0) === 0;
-            return {
-              id: `alert_${product?.id}`,
-              type: isOutOfStock ? 'out_of_stock' : 'low_stock',
-              title: isOutOfStock ? 'Rupture de stock' : 'Stock faible',
-              description: `${product?.name} - ${product?.quantity || 0}/${product?.minStock || 0}`,
-              timestamp: product?.updatedAt || product?.createdAt || new Date().toISOString(),
-              read: readIds.has(`alert_${product?.id}`),
-              onClick: () => {
-                localStorage.setItem('openProductModal', product?.id);
-                window.location.href = `/products`;
-              },
-              metadata: {
-                productId: product?.id,
-                quantity: product?.quantity,
-                minStock: product?.minStock
-              }
-            };
-          });
+          .map((product) => ({
+            ...mapProductToNotification(product),
+            read: readIds.has(`alert_${product?.id}`),
+            onClick: () => {
+              localStorage.setItem('openProductModal', product?.id);
+              window.location.href = `/products`;
+            }
+          }));
 
         allNotifications.push(...lowStockProducts);
       } catch (err) {
