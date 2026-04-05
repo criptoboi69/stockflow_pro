@@ -44,33 +44,39 @@ export const useNotifications = () => {
       // Fetch recent stock movements
       try {
         const movements = await stockMovementService.getStockMovements(currentCompany.id);
-        
-        // Debug: log first movement timestamp
-        if (movements?.length > 0) {
-          console.log('First movement timestamp:', movements[0]?.created_at, 'age:', Math.floor((new Date() - new Date(movements[0]?.created_at)) / 60000), 'min');
-        }
-        
-        const movementNotifications = (movements || []).slice(0, 10).map(m => ({
-          id: `movement_${m?.id}`,
-          type: m?.movement_type === 'in' ? 'stock_in' :
-                m?.movement_type === 'out' ? 'stock_out' : 'adjustment',
-          title: m?.movement_type === 'in' ? 'Entrée de stock' :
-                 m?.movement_type === 'out' ? 'Sortie de stock' : 'Ajustement de stock',
-          description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
-          timestamp: m?.createdAt || m?.created_at || new Date().toISOString(), // camelCase first (after conversion), fallback to snake_case
-          read: readIds.has(`movement_${m?.id}`),
-          onClick: () => {
-            // Store movement ID in localStorage for modal to pick up
-            localStorage.setItem('openMovementModal', m?.id);
-            // Navigate to movements page
-            window.location.href = `/stock-movements`;
-          },
-          metadata: {
-            movementId: m?.id,
-            productId: m?.product_id,
-            quantity: m?.quantity
-          }
-        }));
+
+        const movementNotifications = (movements || []).slice(0, 10).map((movement) => {
+          const movementKind = movement?.type;
+          const notificationType = movementKind === 'receipt'
+            ? 'stock_in'
+            : movementKind === 'issue'
+              ? 'stock_out'
+              : 'adjustment';
+
+          const title = movementKind === 'receipt'
+            ? 'Entrée de stock'
+            : movementKind === 'issue'
+              ? 'Sortie de stock'
+              : 'Ajustement de stock';
+
+          return {
+            id: `movement_${movement?.id}`,
+            type: notificationType,
+            title,
+            description: `${movement?.product?.name || 'Produit'} (${movement?.quantity || 0} unités)`,
+            timestamp: movement?.createdAt || new Date().toISOString(),
+            read: readIds.has(`movement_${movement?.id}`),
+            onClick: () => {
+              localStorage.setItem('openMovementModal', movement?.id);
+              window.location.href = `/stock-movements`;
+            },
+            metadata: {
+              movementId: movement?.id,
+              productId: movement?.productId,
+              quantity: movement?.quantity
+            }
+          };
+        });
 
         allNotifications.push(...movementNotifications);
       } catch (err) {
@@ -82,28 +88,29 @@ export const useNotifications = () => {
         const products = await productService.getProducts(currentCompany.id);
         
         const lowStockProducts = (products || [])
-          .filter(p => p?.status === 'low_stock' || p?.status === 'out_of_stock' || 
-                       Number(p?.quantity || 0) <= Number(p?.min_stock || 0))
+          .filter((product) => (
+            product?.status === 'low_stock' ||
+            product?.status === 'out_of_stock' ||
+            Number(product?.quantity || 0) <= Number(product?.minStock || 0)
+          ))
           .slice(0, 10)
-          .map(p => {
-            const isOutOfStock = Number(p?.quantity || 0) === 0;
+          .map((product) => {
+            const isOutOfStock = Number(product?.quantity || 0) === 0;
             return {
-              id: `alert_${p?.id}`,
+              id: `alert_${product?.id}`,
               type: isOutOfStock ? 'out_of_stock' : 'low_stock',
               title: isOutOfStock ? 'Rupture de stock' : 'Stock faible',
-              description: `${p?.name} - ${p?.quantity || 0}/${p?.min_stock || 0}`,
-              timestamp: p?.updatedAt || p?.updatedAt || p?.updated_at || p?.created_at || new Date().toISOString(),
-              read: readIds.has(`alert_${p?.id}`),
+              description: `${product?.name} - ${product?.quantity || 0}/${product?.minStock || 0}`,
+              timestamp: product?.updatedAt || product?.createdAt || new Date().toISOString(),
+              read: readIds.has(`alert_${product?.id}`),
               onClick: () => {
-                // Store product ID in localStorage for modal to pick up
-                localStorage.setItem('openProductModal', p?.id);
-                // Navigate to products page
+                localStorage.setItem('openProductModal', product?.id);
                 window.location.href = `/products`;
               },
               metadata: {
-                productId: p?.id,
-                quantity: p?.quantity,
-                minStock: p?.min_stock
+                productId: product?.id,
+                quantity: product?.quantity,
+                minStock: product?.minStock
               }
             };
           });

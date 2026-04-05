@@ -103,43 +103,56 @@ const Dashboard = () => {
         ]);
 
         const alerts = productsData
-          .filter((p) => (p?.status === 'low_stock' || p?.status === 'out_of_stock' || Number(p?.quantity || 0) <= Number(p?.min_stock || 0)))
+          .filter((product) => (
+            product?.status === 'low_stock' ||
+            product?.status === 'out_of_stock' ||
+            Number(product?.quantity || 0) <= Number(product?.minStock || 0)
+          ))
           .slice(0, 5)
-          .map((p) => ({
-            id: p?.id,
-            productName: p?.name,
-            sku: p?.sku,
-            currentStock: Number(p?.quantity || 0),
-            minStock: Number(p?.min_stock || 0),
-            location: p?.location || p?.product_location || 'N/A'
+          .map((product) => ({
+            id: product?.id,
+            productName: product?.name,
+            sku: product?.sku,
+            currentStock: Number(product?.quantity || 0),
+            minStock: Number(product?.minStock || 0),
+            location: product?.location || 'N/A'
           }));
         setStockAlerts(alerts);
 
         // Load recent stock movements for activity timeline
         try {
           const movements = await stockMovementService.getStockMovements(currentCompany.id);
-          
-          const activities = (movements || []).slice(0, 10).map((m) => ({
-            id: m?.id,
-            type: m?.movement_type === 'in' ? 'stock_in' : 
-                  m?.movement_type === 'out' ? 'stock_out' : 'adjustment',
-            title: m?.movement_type === 'in' ? 'Entrée de stock' :
-                   m?.movement_type === 'out' ? 'Sortie de stock' : 'Ajustement',
-            description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
-            user: m?.user?.full_name || 'Système',
-            timestamp: m?.created_at || new Date().toISOString()
-          }));
+
+          const activities = (movements || []).slice(0, 10).map((movement) => {
+            const movementKind = movement?.type;
+            return {
+              id: movement?.id,
+              type: movementKind === 'receipt'
+                ? 'stock_in'
+                : movementKind === 'issue'
+                  ? 'stock_out'
+                  : 'adjustment',
+              title: movementKind === 'receipt'
+                ? 'Entrée de stock'
+                : movementKind === 'issue'
+                  ? 'Sortie de stock'
+                  : 'Ajustement',
+              description: `${movement?.product?.name || 'Produit'} (${movement?.quantity || 0} unités)`,
+              user: movement?.user?.fullName || 'Système',
+              timestamp: movement?.createdAt || new Date().toISOString()
+            };
+          });
           setRecentActivities(activities);
         } catch (error) {
           logger.error('Error loading stock movements for dashboard:', error);
           // Fallback to products-based activities
-          const activities = productsData.slice(0, 5).map((p) => ({
-            id: p?.id,
+          const activities = productsData.slice(0, 5).map((product) => ({
+            id: product?.id,
             type: 'product_added',
             title: 'Produit disponible',
-            description: `${p?.name} (${p?.sku || 'N/A'})`,
+            description: `${product?.name} (${product?.sku || 'N/A'})`,
             user: 'Système',
-            timestamp: p?.updated_at || p?.created_at || new Date().toISOString()
+            timestamp: product?.updatedAt || product?.createdAt || new Date().toISOString()
           }));
           setRecentActivities(activities);
         }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
 
@@ -17,7 +17,9 @@ const NotificationBell = ({
   };
   const buttonSize = sizeClasses[size] || sizeClasses.md;
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ left: 72, top: 56, width: 420 });
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,6 +35,44 @@ const NotificationBell = ({
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !buttonRef.current || typeof window === 'undefined') return;
+
+    const updatePosition = () => {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const isDesktop = viewportWidth >= 1024;
+      const desiredWidth = isDesktop ? 420 : Math.min(viewportWidth - 32, 420);
+      const margin = 16;
+
+      let left = isDesktop ? rect.right + 12 : margin;
+      let top = isDesktop ? rect.top : rect.bottom + 12;
+
+      if (left + desiredWidth > viewportWidth - margin) {
+        left = Math.max(margin, viewportWidth - desiredWidth - margin);
+      }
+
+      if (top < margin) {
+        top = margin;
+      }
+
+      setDropdownPosition({
+        left,
+        top,
+        width: desiredWidth
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen]);
 
@@ -108,6 +148,7 @@ const NotificationBell = ({
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`relative ${buttonSize} rounded-lg bg-muted/50 hover:bg-muted transition-colors flex items-center justify-center`}
         aria-label="Notifications"
@@ -129,9 +170,14 @@ const NotificationBell = ({
           <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown Panel */}
-          {/* Desktop: fixed position to the right of sidebar (bell is in sidebar header) */}
-          {/* Mobile: centered, near top */}
-          <div className="fixed left-[4.5rem] top-14 lg:left-[5.5rem] lg:w-[420px] w-[calc(100vw-5rem)] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
+          <div
+            className="fixed bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col"
+            style={{
+              left: `${dropdownPosition.left}px`,
+              top: `${dropdownPosition.top}px`,
+              width: `${dropdownPosition.width}px`
+            }}
+          >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-surface flex-shrink-0">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
