@@ -57,7 +57,7 @@ export const useNotifications = () => {
           title: m?.movement_type === 'in' ? 'Entrée de stock' :
                  m?.movement_type === 'out' ? 'Sortie de stock' : 'Ajustement de stock',
           description: `${m?.product?.name || 'Produit'} (${m?.quantity || 0} unités)`,
-          timestamp: m?.created_at || new Date().toISOString(),
+          timestamp: m?.createdAt || m?.created_at || new Date().toISOString(), // camelCase first (after conversion), fallback to snake_case
           read: readIds.has(`movement_${m?.id}`),
           onClick: () => {
             // Store movement ID in localStorage for modal to pick up
@@ -92,7 +92,7 @@ export const useNotifications = () => {
               type: isOutOfStock ? 'out_of_stock' : 'low_stock',
               title: isOutOfStock ? 'Rupture de stock' : 'Stock faible',
               description: `${p?.name} - ${p?.quantity || 0}/${p?.min_stock || 0}`,
-              timestamp: p?.updated_at || p?.created_at || new Date().toISOString(),
+              timestamp: p?.updatedAt || p?.updatedAt || p?.updated_at || p?.created_at || new Date().toISOString(),
               read: readIds.has(`alert_${p?.id}`),
               onClick: () => {
                 // Store product ID in localStorage for modal to pick up
