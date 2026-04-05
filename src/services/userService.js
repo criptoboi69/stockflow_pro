@@ -365,16 +365,16 @@ export const userService = {
         if (profileError) throw profileError;
       }
 
-      // Add user to company with default role (member)
-      const { error: roleError } = await supabase
-        .from('user_company_roles')
-        .insert({
-          user_id: userId,
-          company_id: companyId,
-          role: 'member'
-        });
+      // Add user to company using SECURITY DEFINER function (bypasses RLS)
+      const { data: roleResult, error: roleError } = await supabase.rpc('add_user_to_company', {
+        p_user_id: userId,
+        p_company_id: companyId,
+        p_role: 'member'
+      });
 
       if (roleError) throw roleError;
+      if (roleResult?.success === false) throw new Error(roleResult?.error || 'Failed to add user to company');
+      if (roleResult?.already_member) return { data: { success: true, alreadyMember: true }, error: null };
 
       return { data: { success: true }, error: null };
     } catch (error) {
