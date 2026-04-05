@@ -18,12 +18,14 @@ const SidebarNavigation = ({
   let currentCompany = null;
   let currentRole = null;
   let signOut = null;
+  let canEdit = null;
   try {
     const auth = useAuth();
     profile = auth?.profile || profile;
     currentCompany = auth?.currentCompany || null;
     currentRole = auth?.currentRole || null;
     signOut = auth?.signOut || null;
+    canEdit = auth?.canEdit || null;
   } catch (e) { console.warn('Auth not ready:', e); }
   const tenantName = currentCompany?.name || (typeof currentTenant === 'string' ? currentTenant : currentTenant?.name) || 'StockFlow Pro';
   const displayName = profile?.full_name || profile?.email?.split('@')?.[0] || 'Utilisateur';
