@@ -1,4 +1,19 @@
 import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Admin client with service role key (bypass RLS)
+const getAdminClient = () => {
+  const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
+  const serviceRoleKey = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    return supabase; // Fallback to regular client
+  }
+  
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+};
 
 class AdminConsoleService {
   async getGlobalKPIs() {
@@ -29,12 +44,14 @@ class AdminConsoleService {
 
   async getCompaniesOverview() {
     logger.info('getCompaniesOverview: Starting...');
+    // Use admin client to bypass RLS
+    const adminSupabase = getAdminClient();
     const [companiesRes, usersRes, productsRes, locationsRes, auditRes] = await Promise.all([
-      supabase.from('companies').select('id,name,status,created_at,updated_at'),
-      supabase.from('user_company_roles').select('company_id,user_id,role,is_active'),
-      supabase.from('products').select('company_id,quantity,price,min_stock,status'),
-      supabase.from('locations').select('company_id,id'),
-      supabase.from('audit_logs').select('company_id,created_at').order('created_at', { ascending: false })
+      adminSupabase.from('companies').select('id,name,status,created_at,updated_at'),
+      adminSupabase.from('user_company_roles').select('company_id,user_id,role,is_active'),
+      adminSupabase.from('products').select('company_id,quantity,price,min_stock,status'),
+      adminSupabase.from('locations').select('company_id,id'),
+      adminSupabase.from('audit_logs').select('company_id,created_at').order('created_at', { ascending: false })
     ]);
 
     const companies = companiesRes.data || [];
@@ -70,13 +87,34 @@ class AdminConsoleService {
   }
 
   async getCompaniesRaw() {
-    const { data, error } = await supabase.from('companies').select('*');
+    // Use admin client to bypass RLS
+    const adminSupabase = getAdminClient();
+    const { data, error } = await adminSupabase.from('companies').select('*');
     if (error) {
       logger.error('getCompaniesRaw error:', error);
       return [];
     }
     logger.info('getCompaniesRaw:', data?.length, data);
     return data || [];
+  }
+
+  async createCompany(name) {
+    const { data, error } = await supabase
+      .from('companies')
+      .insert({
+        name: name.trim(),
+        status: 'active',
+        is_active: true
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      logger.error('Create company error:', error);
+      throw error;
+    }
+    logger.info('Company created:', data);
+    return data;
   }
 
   async getRecentActivity(limit = 20) {

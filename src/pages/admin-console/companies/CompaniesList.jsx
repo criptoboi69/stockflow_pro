@@ -139,6 +139,20 @@ const CompaniesList = () => {
     }
   };
 
+  const handleCreateCompany = async () => {
+    const name = prompt('Nom de l\'entreprise :');
+    if (!name) return;
+    
+    try {
+      await adminConsoleService.createCompany(name);
+      setFeedback({ type: 'success', message: 'Entreprise créée avec succès' });
+      await loadCompanies();
+    } catch (error) {
+      logger.error('Create company error:', error);
+      setFeedback({ type: 'error', message: `Erreur: ${error?.message}` });
+    }
+  };
+
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
       const matchesSearch = company?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
@@ -174,7 +188,7 @@ const CompaniesList = () => {
         actions={
           <Button
             variant="default"
-            onClick={() => setFeedback({ type: 'info', message: 'Fonctionnalité à implémenter' })}
+            onClick={handleCreateCompany}
             iconName="Plus"
             iconPosition="left"
             size="sm"
