@@ -45,6 +45,11 @@ export const useNotifications = () => {
       try {
         const movements = await stockMovementService.getStockMovements(currentCompany.id);
         
+        // Debug: log first movement timestamp
+        if (movements?.length > 0) {
+          console.log('First movement timestamp:', movements[0]?.created_at, 'age:', Math.floor((new Date() - new Date(movements[0]?.created_at)) / 60000), 'min');
+        }
+        
         const movementNotifications = (movements || []).slice(0, 10).map(m => ({
           id: `movement_${m?.id}`,
           type: m?.movement_type === 'in' ? 'stock_in' :

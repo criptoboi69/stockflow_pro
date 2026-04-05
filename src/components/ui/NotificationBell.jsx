@@ -37,18 +37,43 @@ const NotificationBell = ({
   }, [isOpen]);
 
   const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Inconnu';
+    
     const now = new Date();
     const time = new Date(timestamp);
-    const diffInMinutes = Math.floor((now - time) / (1000 * 60));
+    
+    // Check if date is valid
+    if (isNaN(time.getTime())) {
+      console.warn('Invalid timestamp:', timestamp);
+      return 'Date invalide';
+    }
+    
+    const diffInSeconds = Math.floor((now - time) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+    
+    // Debug log for first notification only
+    if (timestamp && Math.abs(diffInMinutes) < 2) {
+      console.log('Notification timestamp debug:', {
+        timestamp,
+        parsed: time.toISOString(),
+        now: now.toISOString(),
+        diffMinutes: diffInMinutes
+      });
+    }
     
     if (diffInMinutes < 1) return 'À l\'instant';
-    if (diffInMinutes < 60) return `${diffInMinutes}min`;
+    if (diffInMinutes < 60) return `Il y a ${diffInMinutes} min`;
+    if (diffInHours < 24) return `Il y a ${diffInHours} h`;
+    if (diffInDays < 7) return `Il y a ${diffInDays} j`;
     
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}j`;
+    // For older notifications, show actual date
+    return time.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const getNotificationIcon = (type) => {
