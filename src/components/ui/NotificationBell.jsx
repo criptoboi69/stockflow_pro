@@ -91,9 +91,14 @@ const NotificationBell = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-surface border border-border rounded-xl shadow-lg z-50 max-h-96 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
+        <>
+          {/* Backdrop for mobile */}
+          <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
+          
+          {/* Dropdown Panel - Fixed positioning to escape sidebar overflow */}
+          <div className="fixed right-4 top-14 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 w-[calc(100vw-2rem)] sm:w-96 md:w-[420px] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border bg-surface flex-shrink-0">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && onMarkAllAsRead && (
@@ -103,25 +108,21 @@ const NotificationBell = ({
                   }}
                   className="text-xs text-primary hover:text-primary/80 font-medium"
                 >
-                  Tout lire
+                  Tout marquer comme lu
                 </button>
               )}
-              {onViewAll && (
-                <button
-                  onClick={() => {
-                    onViewAll();
-                    setIsOpen(false);
-                  }}
-                  className="text-xs text-primary hover:text-primary/80 font-medium"
-                >
-                  Voir tout
-                </button>
-              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-text-muted hover:text-text-primary transition-colors"
+                aria-label="Fermer"
+              >
+                <Icon name="X" size={16} />
+              </button>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="overflow-y-auto max-h-80">
+            {/* Content */}
+            <div className="overflow-y-auto flex-1">
             {recentNotifications?.length === 0 ? (
               <div className="p-8 text-center">
                 <Icon name="Bell" size={32} className="text-text-muted mx-auto mb-2" />
@@ -179,8 +180,26 @@ const NotificationBell = ({
                 })}
               </div>
             )}
+            </div>
+
+            {/* Footer */}
+            {recentNotifications?.length > 0 && onViewAll && (
+              <div className="p-3 border-t border-border bg-surface flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onViewAll();
+                    setIsOpen(false);
+                  }}
+                  className="w-full justify-center"
+                >
+                  Voir toutes les notifications
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
