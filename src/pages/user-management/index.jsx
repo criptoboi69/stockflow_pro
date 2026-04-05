@@ -281,17 +281,55 @@ const UserManagement = () => {
 
   const handleCopyCompanyId = () => {
     if (currentCompany?.id) {
-      navigator.clipboard.writeText(currentCompany.id);
-      alert(`ID de l'entreprise copié :\n${currentCompany.id}`);
+      // Fallback for non-HTTPS contexts
+      const textToCopy = currentCompany.id;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy)
+          .then(() => alert(`ID de l'entreprise copié :\n${textToCopy}`))
+          .catch(err => {
+            console.error('Clipboard error:', err);
+            fallbackCopy(textToCopy);
+          });
+      } else {
+        fallbackCopy(textToCopy);
+      }
     }
   };
 
   const handleCopyInviteLink = () => {
     if (currentCompany?.id) {
       const inviteUrl = `${window.location.origin}/accept-invitation?companyId=${currentCompany.id}`;
-      navigator.clipboard.writeText(inviteUrl);
-      alert(`Lien d'invitation copié :\n${inviteUrl}`);
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(inviteUrl)
+          .then(() => alert(`Lien d'invitation copié :\n${inviteUrl}`))
+          .catch(err => {
+            console.error('Clipboard error:', err);
+            fallbackCopy(inviteUrl);
+          });
+      } else {
+        fallbackCopy(inviteUrl);
+      }
     }
+  };
+
+  // Fallback copy method for non-HTTPS contexts
+  const fallbackCopy = (text) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      alert(`Copié :\n${text}`);
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      prompt('Copiez manuellement :', text);
+    }
+    document.body.removeChild(textArea);
   };
 
   const handleBulkAction = async (action) => {
