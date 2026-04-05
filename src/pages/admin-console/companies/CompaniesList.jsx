@@ -86,6 +86,7 @@ const CompaniesList = () => {
   const { currentRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
+  const [debugInfo, setDebugInfo] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [feedback, setFeedback] = useState(null);
@@ -93,15 +94,30 @@ const CompaniesList = () => {
   const loadCompanies = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Debug: Get raw companies first
+      const rawData = await adminConsoleService.getCompaniesRaw();
+      setDebugInfo({ rawCount: rawData?.length || 0, raw: rawData });
+      
       const data = await adminConsoleService.getCompaniesOverview();
       logger.info('Companies loaded:', data?.length, data);
+      setDebugInfo(prev => ({ ...prev, overviewCount: data?.length || 0, overview: data }));
       setCompanies(data || []);
+      
       if (!data || data.length === 0) {
-        setFeedback({ type: 'info', message: 'Aucune entreprise trouvée dans la base' });
+        if (rawData && rawData.length > 0) {
+          setFeedback({ 
+            type: 'warning', 
+            message: `Entreprises dans DB: ${rawData.length}, mais aucune dans l'overview. Problème RLS ?` 
+          });
+        } else {
+          setFeedback({ type: 'info', message: 'Aucune entreprise trouvée dans la base' });
+        }
       }
     } catch (error) {
       logger.error('Companies list load error:', error);
       setFeedback({ type: 'error', message: `Erreur: ${error?.message || 'Inconnue'}` });
+      setDebugInfo(prev => ({ ...prev, error: error?.message }));
       setCompanies([]);
     } finally {
       setLoading(false);
@@ -169,6 +185,16 @@ const CompaniesList = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+        {/* Debug Info */}
+        {debugInfo && (
+          <div className="mb-6 p-4 rounded-lg bg-muted/50 border border-border text-xs">
+            <p className="font-bold mb-2">Debug:</p>
+            <p>Raw DB: {debugInfo.rawCount || 0} entreprises</p>
+            <p>Overview: {debugInfo.overviewCount || 0} entreprises</p>
+            {debugInfo.error && <p className="text-error mt-2">Erreur: {debugInfo.error}</p>}
+          </div>
+        )}
+        
         {feedback && (
           <div className="mb-6">
             <InlineFeedback type={feedback.type} message={feedback.message} />
