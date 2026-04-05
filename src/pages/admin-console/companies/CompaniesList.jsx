@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
-import { logger } from '../../../utils/logger';
 import adminConsoleService from '../../../services/adminConsoleService';
 import PageHeader from '../../../components/ui/PageHeader';
 import Button from '../../../components/ui/Button';
@@ -100,7 +99,6 @@ const CompaniesList = () => {
       setDebugInfo({ rawCount: rawData?.length || 0, raw: rawData });
       
       const data = await adminConsoleService.getCompaniesOverview();
-      logger.info('Companies loaded:', data?.length, data);
       setDebugInfo(prev => ({ ...prev, overviewCount: data?.length || 0, overview: data }));
       setCompanies(data || []);
       
@@ -115,7 +113,7 @@ const CompaniesList = () => {
         }
       }
     } catch (error) {
-      logger.error('Companies list load error:', error);
+      console.error('Companies list load error:', error);
       setFeedback({ type: 'error', message: `Erreur: ${error?.message || 'Inconnue'}` });
       setDebugInfo(prev => ({ ...prev, error: error?.message }));
       setCompanies([]);
@@ -134,7 +132,7 @@ const CompaniesList = () => {
       setFeedback({ type: 'success', message: `Entreprise ${newStatus === 'active' ? 'activée' : 'désactivée'}` });
       await loadCompanies();
     } catch (error) {
-      logger.error('Company status update error:', error);
+      console.error('Company status update error:', error);
       setFeedback({ type: 'error', message: 'Erreur lors de la mise à jour du statut' });
     }
   };
@@ -148,7 +146,7 @@ const CompaniesList = () => {
       setFeedback({ type: 'success', message: 'Entreprise créée avec succès' });
       await loadCompanies();
     } catch (error) {
-      logger.error('Create company error:', error);
+      console.error('Create company error:', error);
       setFeedback({ type: 'error', message: `Erreur: ${error?.message}` });
     }
   };

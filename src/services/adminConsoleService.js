@@ -4,12 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 // Admin client with service role key (bypass RLS)
 const getAdminClient = () => {
   const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
-  const serviceRoleKey = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY;
+  // Note: Must use VITE_ prefix for client-side exposure
+  const serviceRoleKey = import.meta.env?.VITE_SUPABASE_SERVICE_ROLE_KEY;
   
   if (!supabaseUrl || !serviceRoleKey) {
+    console.warn('Admin client: No service role key, using regular client');
     return supabase; // Fallback to regular client
   }
   
+  console.info('Admin client: Using service role key (bypass RLS)');
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
