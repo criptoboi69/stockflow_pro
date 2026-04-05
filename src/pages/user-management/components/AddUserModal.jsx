@@ -53,8 +53,12 @@ const AddUserModal = ({ isOpen, onClose, onAddUser, currentUserRole, currentComp
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData?.name?.trim()) {
-      newErrors.name = 'Le nom est requis';
+    if (!formData?.firstName?.trim()) {
+      newErrors.firstName = 'Le prénom est requis';
+    }
+
+    if (!formData?.lastName?.trim()) {
+      newErrors.lastName = 'Le nom est requis';
     }
 
     if (!formData?.email?.trim()) {
@@ -65,10 +69,6 @@ const AddUserModal = ({ isOpen, onClose, onAddUser, currentUserRole, currentComp
 
     if (!formData?.role) {
       newErrors.role = 'Le rôle est requis';
-    }
-
-    if (!formData?.company) {
-      newErrors.company = 'La société est requise';
     }
 
     setErrors(newErrors);
@@ -82,8 +82,6 @@ const AddUserModal = ({ isOpen, onClose, onAddUser, currentUserRole, currentComp
 
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      
       const newUser = {
         firstName: formData?.firstName,
         lastName: formData?.lastName,
@@ -92,10 +90,11 @@ const AddUserModal = ({ isOpen, onClose, onAddUser, currentUserRole, currentComp
         sendInvitation: formData?.sendInvitation
       };
 
-      onAddUser(newUser);
+      await onAddUser(newUser);
       handleClose();
     } catch (error) {
-      setErrors({ submit: 'Erreur lors de l\'ajout de l\'utilisateur' });
+      console.error('Add user error:', error);
+      setErrors({ submit: error?.message || 'Erreur lors de l\'ajout de l\'utilisateur' });
     } finally {
       setIsLoading(false);
     }
