@@ -124,7 +124,9 @@ const CompanyDetail = () => {
   };
 
   const handleToggleStatus = async () => {
-    const newStatus = company?.status === 'active' ? 'inactive' : 'active';
+    const currentStatus = company?.status || 'inactive';
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    logger.info(`Toggling status from ${currentStatus} to ${newStatus}`);
     try {
       await adminConsoleService.updateCompanyStatus(companyId, newStatus);
       setFeedback({ type: 'success', message: `Entreprise ${newStatus === 'active' ? 'activée' : 'désactivée'}` });
@@ -166,7 +168,9 @@ const CompanyDetail = () => {
     suspended: { color: 'text-error', label: 'Suspendu' },
   };
 
-  const status = statusConfig[company?.status] || statusConfig.inactive;
+  // Normalize status
+  const companyStatus = company?.status || 'inactive';
+  const status = statusConfig[companyStatus] || statusConfig.inactive;
 
   const companyUsers = company?.users || [];
   const usersWithoutCurrent = allUsers.filter(u => !companyUsers.find(cu => cu.id === u.id));

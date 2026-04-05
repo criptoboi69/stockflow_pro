@@ -29,7 +29,7 @@ class AdminConsoleService {
 
   async getCompaniesOverview() {
     const [companiesRes, usersRes, productsRes, locationsRes, auditRes] = await Promise.all([
-      supabase.from('companies').select('id,name,created_at'),
+      supabase.from('companies').select('id,name,status,created_at,updated_at'),
       supabase.from('user_company_roles').select('company_id,user_id,role,is_active'),
       supabase.from('products').select('company_id,quantity,price,min_stock,status'),
       supabase.from('locations').select('company_id,id'),
@@ -51,6 +51,9 @@ class AdminConsoleService {
       return {
         id: company.id,
         name: company.name,
+        status: company.status || 'inactive',
+        created_at: company.created_at,
+        updated_at: company.updated_at,
         users: companyUsers.length,
         admins: companyUsers.filter((u) => ['super_admin', 'admin', 'administrator'].includes(String(u.role))).length,
         products: companyProducts.length,
@@ -226,13 +229,61 @@ class AdminConsoleService {
   }
 
   async updateCompanyStatus(companyId, status) {
-    const { error } = await supabase
-      .from('companies')
-      .update({ status })
-      .eq('id', companyId);
-    
-    if (error) throw error;
-    return { success: true };
+    try {
+      // Validate status value (must match enum)
+      const validStatuses = ['active', 'inactive', 'suspended'];
+      const normalizedStatus = validStatuses.includes(status) ? status : 'inactive';
+      
+      logger.info(`Updating company ${companyId} status to: ${normalizedStatus}`);
+      
+      // First, try to read current status
+      const { data: currentData, error: readError } = await supabase
+        .from('companies')
+        .select('id, name, status')
+        .eq('id', companyId)
+        .single();
+      
+      if (readError) {
+        logger.error('Read company error:', readError);
+        // Fallback: try is_active
+        const isActive = normalizedStatus === 'active';
+        const { error: updateError } = await supabase
+          .from('companies')
+          .update({ is_active: isActive, status: normalizedStatus })
+          .eq('id', companyId);
+        if (updateError) throw updateError;
+        return { success: true };
+      }
+      
+      logger.info(`Current company status: ${currentData?.status}`);
+      
+      // Update with both status and is_active for compatibility
+      const { error } = await supabase
+        .from('companies')
+        .update({ 
+          status: normalizedStatus,
+          is_active: normalizedStatus === 'active'
+        })
+        .eq('id', companyId);
+      
+      if (error) {
+        logger.error('Update company status error:', error);
+        throw error;
+      }
+      
+      // Verify update
+      const { data: updatedData } = await supabase
+        .from('companies')
+        .select('status')
+        .eq('id', companyId)
+        .single();
+      
+      logger.info(`Updated company status: ${updatedData?.status}`);
+      return { success: true };
+    } catch (error) {
+      logger.error('updateCompanyStatus failed:', error);
+      throw error;
+    }
   }
 
   async getAlerts() {

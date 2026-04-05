@@ -17,7 +17,9 @@ const CompanyCard = ({ company, onToggleStatus }) => {
     suspended: { color: 'bg-error/10 text-error border-error/20', label: 'Suspendu' },
   };
 
-  const status = statusConfig[company?.status] || statusConfig.inactive;
+  // Normalize status (handle undefined/null)
+  const companyStatus = company?.status || 'inactive';
+  const status = statusConfig[companyStatus] || statusConfig.inactive;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5 hover:border-primary/50 hover:shadow-md transition-all">
@@ -53,7 +55,7 @@ const CompanyCard = ({ company, onToggleStatus }) => {
 
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="text-xs text-text-muted">
-          Créé le {new Date(company?.created_at)?.toLocaleDateString('fr-FR')}
+          Créé le {company?.created_at ? new Date(company?.created_at)?.toLocaleDateString('fr-FR') : '—'}
         </div>
         <Link
           to={`/admin-console/companies/${company?.id}`}
@@ -67,12 +69,12 @@ const CompanyCard = ({ company, onToggleStatus }) => {
       {onToggleStatus && (
         <div className="mt-3 pt-3 border-t border-border">
           <Button
-            variant={company?.status === 'active' ? 'outline' : 'default'}
+            variant={companyStatus === 'active' ? 'outline' : 'default'}
             size="sm"
-            onClick={() => onToggleStatus(company?.id, company?.status === 'active' ? 'inactive' : 'active')}
+            onClick={() => onToggleStatus(company?.id, companyStatus === 'active' ? 'inactive' : 'active')}
             className="w-full"
           >
-            {company?.status === 'active' ? 'Désactiver' : 'Activer'}
+            {companyStatus === 'active' ? 'Désactiver' : 'Activer'}
           </Button>
         </div>
       )}
