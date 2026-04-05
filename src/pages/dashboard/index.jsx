@@ -19,8 +19,8 @@ import { logger } from '../../utils/logger';
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { currentRole, currentCompany, isAdministrator } = useAuth();
-  const canViewStats = isAdministrator?.(); // Only super_admin + admin can see stats/charts
+  const { currentRole, currentCompany, canViewStats } = useAuth();
+  const shouldShowStats = canViewStats?.();
   const [products, setProducts] = useState([]);
   const [kpiData, setKpiData] = useState([
     {
@@ -324,7 +324,7 @@ const Dashboard = () => {
           </div>
 
           {/* Enhanced Bottom Grid with responsive columns */}
-          {canViewStats && (
+          {shouldShowStats && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Quick Stats */}
               {dashboardVisibility?.lowStockItems !== false && (
@@ -338,7 +338,7 @@ const Dashboard = () => {
           )}
 
           {/* Enhanced Performance Chart with responsive sizing - Admin only */}
-          {canViewStats && (
+          {shouldShowStats && (
             <div className="bg-card border border-border rounded-2xl card-responsive card-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
               <h3 className="text-base sm:text-lg font-semibold text-text-primary">Évolution des Stocks (7 derniers jours)</h3>

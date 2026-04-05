@@ -2,6 +2,18 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isDemoModeCheck } from '../lib/supabase';
 import { logger } from '../utils/logger';
 import safeStorage from '../utils/safeStorage';
+import {
+  normalizeRole,
+  hasRole as checkHasRole,
+  isSuperAdminRole,
+  isAdministratorRole,
+  isManagerRole,
+  isEmployeeRole,
+  canEditRole,
+  canViewStatsRole,
+  canManageUsersRole,
+  canSeePricesRole
+} from '../utils/permissions';
 
 const AuthContext = createContext();
 
@@ -41,13 +53,6 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const normalizeRole = (role) => {
-    if (!role) return null;
-    const r = String(role).toLowerCase();
-    if (r === 'admin') return 'administrator';
-    if (r === 'employee') return 'user';
-    return r;
-  };
 
   const initializeAuth = async () => {
     try {
@@ -443,17 +448,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const hasRole = (roles) => {
-    if (!currentRole) return false;
-    const roleArray = Array.isArray(roles) ? roles : [roles];
-    return roleArray?.includes(currentRole);
-  };
+  const hasRole = (roles) => checkHasRole(currentRole, roles);
 
-  const isSuperAdmin = () => hasRole('super_admin');
-  const isAdministrator = () => hasRole(['super_admin', 'administrator']);
-  const isManager = () => hasRole(['super_admin', 'administrator', 'manager']);
-  const isEmployee = () => hasRole('employee') || currentRole === 'user';
-  const canEdit = () => !isEmployee(); // All roles except employee can edit
+  const isSuperAdmin = () => isSuperAdminRole(currentRole);
+  const isAdministrator = () => isAdministratorRole(currentRole);
+  const isManager = () => isManagerRole(currentRole);
+  const isEmployee = () => isEmployeeRole(currentRole);
+  const canEdit = () => canEditRole(currentRole);
+  const canViewStats = () => canViewStatsRole(currentRole);
+  const canManageUsers = () => canManageUsersRole(currentRole);
+  const canSeePrices = () => canSeePricesRole(currentRole);
 
   const value = {
     user,
@@ -473,7 +477,10 @@ export const AuthProvider = ({ children }) => {
     isAdministrator,
     isManager,
     isEmployee,
-    canEdit
+    canEdit,
+    canViewStats,
+    canManageUsers,
+    canSeePrices
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

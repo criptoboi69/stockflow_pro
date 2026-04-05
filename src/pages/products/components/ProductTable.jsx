@@ -21,11 +21,10 @@ const ProductTable = ({
   canUserEdit,
   onSort
 }) => {
-  const { isAdministrator, isManager } = useAuth();
+  const { canSeePrices } = useAuth();
   const { isMobile } = useResponsive();
   const { settings } = useCompanySettings();
-  const canSeePrices = isAdministrator() || isManager();
-  const showPrices = canSeePrices && settings?.showPrices !== false;
+  const showPrices = canSeePrices() && settings?.showPrices !== false;
 
   const getStatusBadge = (status, quantity) => {
     if (quantity === 0) {

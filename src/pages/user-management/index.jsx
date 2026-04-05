@@ -18,7 +18,7 @@ import { userService } from '../../services/userService';
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { currentCompany, currentRole, profile, isManager } = useAuth();
+  const { currentCompany, currentRole, profile, canManageUsers } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [users, setUsers] = useState([]);

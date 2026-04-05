@@ -6,10 +6,9 @@ import Button from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement, canUserEdit }) => {
-  const { isAdministrator, isManager } = useAuth();
+  const { canSeePrices } = useAuth();
   const { settings } = useCompanySettings();
-  const canSeePrices = isAdministrator() || isManager();
-  const showPrices = canSeePrices && settings?.showPrices !== false;
+  const showPrices = canSeePrices() && settings?.showPrices !== false;
 
   const getStatusBadge = (status, quantity) => {
     if (quantity === 0) {
