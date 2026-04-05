@@ -71,48 +71,38 @@ export const userService = {
 
       const acceptUrl = `${window.location.origin}/accept-invitation?token=${token}`;
 
-      // Send invitation email via Resend (direct API call)
+      // Send invitation email via Supabase Edge Function
       try {
-        const resendApiKey = "re_PoUjTYY9_8QSKiWyJjXuTFm7w355LzEQR";
-        await fetch("https://api.resend.com/emails", {
+        const edgeFunctionUrl = `${window.location.origin.replace(":4028", ":8000")}/functions/v1/send-invitation`;
+        console.info('Sending email via Supabase Edge Function to:', email);
+        
+        const emailResponse = await fetch(edgeFunctionUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${resendApiKey}`
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q`
           },
           body: JSON.stringify({
-            from: "StockFlow <onboarding@resend.dev>",
-            to: [email],
-            subject: `Invitation à rejoindre ${companyName || "StockFlow"}`,
-            html: `
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <meta charset="utf-8">
-                  <title>Invitation StockFlow</title>
-                </head>
-                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Invitation StockFlow</h1>
-                  </div>
-                  <div style="background: #ffffff; padding: 30px; border: 1px solid #e1e1e1; border-top: none; border-radius: 0 0 12px 12px;">
-                    <p style="font-size: 16px; margin-bottom: 20px;">Bonjour <strong>${firstName || ""} ${lastName || ""}</strong>,</p>
-                    <p style="font-size: 16px; margin-bottom: 20px;"><strong>${inviterName || "L'équipe StockFlow"}</strong> vous invite à rejoindre l'organisation <strong>${companyName || "StockFlow"}</strong> avec le rôle <strong>${role === "super_admin" ? "Super Admin" : role === "admin" ? "Administrateur" : role === "manager" ? "Manager" : "Employé"}</strong>.</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                      <a href="${acceptUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 40px; border-radius: 8px; font-weight: 600; font-size: 16px;">Accepter l'invitation</a>
-                    </div>
-                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Cette invitation expirera dans <strong>7 jours</strong>.</p>
-                    <hr style="border: none; border-top: 1px solid #e1e1e1; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px;">${acceptUrl}</p>
-                  </div>
-                </body>
-              </html>
-            `
+            email,
+            firstName: firstName || "",
+            lastName: lastName || "",
+            roleName: role === "super_admin" ? "Super Admin" : role === "admin" ? "Administrateur" : role === "manager" ? "Manager" : "Employé",
+            companyName: companyName || "StockFlow",
+            inviterName: inviterName || "L'équipe StockFlow",
+            acceptUrl
           })
         });
-        console.info("Invitation email sent via Resend");
+        
+        const emailResult = await emailResponse.json();
+        console.info("Edge Function response:", emailResponse.status, emailResult);
+        
+        if (!emailResponse.ok) {
+          console.error("Edge Function error:", emailResult);
+        } else {
+          console.info("Invitation email sent via Supabase Edge Function:", emailResult?.data?.id);
+        }
       } catch (emailError) {
-        console.warn("Failed to send invitation email via Resend:", emailError);
+        console.error("Failed to send invitation email via Edge Function:", emailError);
         // Don't fail the invitation if email fails
       }
 
