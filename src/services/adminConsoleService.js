@@ -46,7 +46,7 @@ class AdminConsoleService {
   }
 
   async getCompaniesOverview() {
-    logger.info('getCompaniesOverview: Starting...');
+    console.info('getCompaniesOverview: Starting...');
     // Use admin client to bypass RLS
     const adminSupabase = getAdminClient();
     const [companiesRes, usersRes, productsRes, locationsRes, auditRes] = await Promise.all([
@@ -58,13 +58,13 @@ class AdminConsoleService {
     ]);
 
     const companies = companiesRes.data || [];
-    logger.info('getCompaniesOverview: Raw companies:', companies?.length, companies);
+    console.info('getCompaniesOverview: Raw companies:', companies?.length, companies);
     const users = usersRes.data || [];
     const products = productsRes.data || [];
     const locations = locationsRes.data || [];
     const audits = auditRes.data || [];
 
-    logger.info('getCompaniesOverview: Processing companies...');
+    console.info('getCompaniesOverview: Processing companies...');
     return companies.map((company) => {
       const companyUsers = users.filter((u) => u.company_id === company.id && u.is_active !== false);
       const companyProducts = products.filter((p) => p.company_id === company.id);
@@ -94,10 +94,10 @@ class AdminConsoleService {
     const adminSupabase = getAdminClient();
     const { data, error } = await adminSupabase.from('companies').select('*');
     if (error) {
-      logger.error('getCompaniesRaw error:', error);
+      console.error('getCompaniesRaw error:', error);
       return [];
     }
-    logger.info('getCompaniesRaw:', data?.length, data);
+    console.info('getCompaniesRaw:', data?.length, data);
     return data || [];
   }
 
@@ -113,10 +113,10 @@ class AdminConsoleService {
       .single();
     
     if (error) {
-      logger.error('Create company error:', error);
+      console.error('Create company error:', error);
       throw error;
     }
-    logger.info('Company created:', data);
+    console.info('Company created:', data);
     return data;
   }
 
@@ -288,7 +288,7 @@ class AdminConsoleService {
       const validStatuses = ['active', 'inactive', 'suspended'];
       const normalizedStatus = validStatuses.includes(status) ? status : 'inactive';
       
-      logger.info(`Updating company ${companyId} status to: ${normalizedStatus}`);
+      console.info(`Updating company ${companyId} status to: ${normalizedStatus}`);
       
       // First, try to read current status
       const { data: currentData, error: readError } = await supabase
@@ -298,7 +298,7 @@ class AdminConsoleService {
         .single();
       
       if (readError) {
-        logger.error('Read company error:', readError);
+        console.error('Read company error:', readError);
         // Fallback: try is_active
         const isActive = normalizedStatus === 'active';
         const { error: updateError } = await supabase
@@ -309,7 +309,7 @@ class AdminConsoleService {
         return { success: true };
       }
       
-      logger.info(`Current company status: ${currentData?.status}`);
+      console.info(`Current company status: ${currentData?.status}`);
       
       // Update with both status and is_active for compatibility
       const { error } = await supabase
@@ -321,7 +321,7 @@ class AdminConsoleService {
         .eq('id', companyId);
       
       if (error) {
-        logger.error('Update company status error:', error);
+        console.error('Update company status error:', error);
         throw error;
       }
       
@@ -332,10 +332,10 @@ class AdminConsoleService {
         .eq('id', companyId)
         .single();
       
-      logger.info(`Updated company status: ${updatedData?.status}`);
+      console.info(`Updated company status: ${updatedData?.status}`);
       return { success: true };
     } catch (error) {
-      logger.error('updateCompanyStatus failed:', error);
+      console.error('updateCompanyStatus failed:', error);
       throw error;
     }
   }
