@@ -296,12 +296,17 @@ const UserManagement = () => {
     }
   };
 
-  const handleCopyInviteLink = () => {
-    if (currentCompany?.id) {
-      const inviteUrl = `${window.location.origin}/accept-invitation?companyId=${currentCompany.id}`;
+  const handleCopyInviteLink = async () => {
+    if (!currentCompany?.id) return;
+
+    try {
+      // Create a generic invitation link for the company
+      // User will need to enter their email on the acceptance page
+      const inviteUrl = `${window.location.origin}/accept-invitation?companyId=${currentCompany.id}&openSignup=true`;
+      
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(inviteUrl)
-          .then(() => alert(`Lien d'invitation copié :\n${inviteUrl}`))
+          .then(() => alert(`Lien d'inscription copié :\n${inviteUrl}\n\nLes personnes qui cliquent pourront s'inscrire dans ton entreprise.`))
           .catch(err => {
             console.error('Clipboard error:', err);
             fallbackCopy(inviteUrl);
@@ -309,6 +314,9 @@ const UserManagement = () => {
       } else {
         fallbackCopy(inviteUrl);
       }
+    } catch (error) {
+      logger.error('Error creating invite link:', error);
+      alert('Erreur lors de la création du lien');
     }
   };
 

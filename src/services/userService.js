@@ -311,5 +311,63 @@ export const userService = {
       console.error('Error cancelling invitation:', error);
       return { error };
     }
+  },
+
+  async openSignup({ email, password, firstName, lastName, companyId }) {
+    try {
+      // Create user via Supabase Auth
+      const { data: authData, error: authError } = await supabase?.auth?.signUp({
+        email,
+        password
+      });
+
+      if (authError) throw authError;
+      if (!authData?.user) throw new Error('Failed to create user');
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`.trim()
+        });
+
+      if (profileError) throw profileError;
+
+      // Add user to company with default role (member)
+      const { error: roleError } = await supabase
+        .from('user_company_roles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: companyId,
+          role: 'member'
+        });
+
+      if (roleError) throw roleError;
+
+      return { data: { success: true }, error: null };
+    } catch (error) {
+      console.error('Open signup error:', error);
+      return { data: null, error };
+    }
+  },
+
+  async getCompanyInfo(companyId) {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name, created_at')
+        .eq('id', companyId)
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error fetching company info:', error);
+      return { data: null, error };
+    }
   }
 };
