@@ -129,9 +129,9 @@ const NotificationBell = ({
           <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown Panel */}
-          {/* Mobile: fixed, centered */}
-          {/* Desktop: absolute, positioned relative to parent (bell button container) */}
-          <div className="lg:absolute lg:right-0 lg:top-full lg:mt-2 fixed inset-x-4 top-16 lg:inset-x-auto lg:w-[420px] w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
+          {/* Desktop: fixed position to the right of sidebar (bell is in sidebar header) */}
+          {/* Mobile: centered, near top */}
+          <div className="fixed left-[4.5rem] top-14 lg:left-[5.5rem] lg:w-[420px] w-[calc(100vw-5rem)] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-surface flex-shrink-0">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
