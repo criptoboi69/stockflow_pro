@@ -28,6 +28,7 @@ class AdminConsoleService {
   }
 
   async getCompaniesOverview() {
+    logger.info('getCompaniesOverview: Starting...');
     const [companiesRes, usersRes, productsRes, locationsRes, auditRes] = await Promise.all([
       supabase.from('companies').select('id,name,status,created_at,updated_at'),
       supabase.from('user_company_roles').select('company_id,user_id,role,is_active'),
@@ -37,11 +38,13 @@ class AdminConsoleService {
     ]);
 
     const companies = companiesRes.data || [];
+    logger.info('getCompaniesOverview: Raw companies:', companies?.length, companies);
     const users = usersRes.data || [];
     const products = productsRes.data || [];
     const locations = locationsRes.data || [];
     const audits = auditRes.data || [];
 
+    logger.info('getCompaniesOverview: Processing companies...');
     return companies.map((company) => {
       const companyUsers = users.filter((u) => u.company_id === company.id && u.is_active !== false);
       const companyProducts = products.filter((p) => p.company_id === company.id);
@@ -64,6 +67,16 @@ class AdminConsoleService {
         lastActivity,
       };
     });
+  }
+
+  async getCompaniesRaw() {
+    const { data, error } = await supabase.from('companies').select('*');
+    if (error) {
+      logger.error('getCompaniesRaw error:', error);
+      return [];
+    }
+    logger.info('getCompaniesRaw:', data?.length, data);
+    return data || [];
   }
 
   async getRecentActivity(limit = 20) {

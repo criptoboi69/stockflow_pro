@@ -94,10 +94,15 @@ const CompaniesList = () => {
     try {
       setLoading(true);
       const data = await adminConsoleService.getCompaniesOverview();
-      setCompanies(data);
+      logger.info('Companies loaded:', data?.length, data);
+      setCompanies(data || []);
+      if (!data || data.length === 0) {
+        setFeedback({ type: 'info', message: 'Aucune entreprise trouvée dans la base' });
+      }
     } catch (error) {
       logger.error('Companies list load error:', error);
-      setFeedback({ type: 'error', message: 'Erreur lors du chargement des entreprises' });
+      setFeedback({ type: 'error', message: `Erreur: ${error?.message || 'Inconnue'}` });
+      setCompanies([]);
     } finally {
       setLoading(false);
     }
