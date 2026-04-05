@@ -19,7 +19,8 @@ import { logger } from '../../utils/logger';
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { currentRole, currentCompany } = useAuth();
+  const { currentRole, currentCompany, canEdit } = useAuth();
+  const canViewStats = canEdit?.(); // Only admin+ can see stats/charts
   const [products, setProducts] = useState([]);
   const [kpiData, setKpiData] = useState([
     {
@@ -310,19 +311,22 @@ const Dashboard = () => {
           </div>
 
           {/* Enhanced Bottom Grid with responsive columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Quick Stats */}
-            {dashboardVisibility?.lowStockItems !== false && (
-              <QuickStatsCard
-                title="Statistiques Rapides"
-                stats={quickStats}
-                loading={loading}
-              />
-            )}
-          </div>
+          {canViewStats && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Quick Stats */}
+              {dashboardVisibility?.lowStockItems !== false && (
+                <QuickStatsCard
+                  title="Statistiques Rapides"
+                  stats={quickStats}
+                  loading={loading}
+                />
+              )}
+            </div>
+          )}
 
-          {/* Enhanced Performance Chart with responsive sizing */}
-          <div className="bg-card border border-border rounded-2xl card-responsive card-shadow">
+          {/* Enhanced Performance Chart with responsive sizing - Admin only */}
+          {canViewStats && (
+            <div className="bg-card border border-border rounded-2xl card-responsive card-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
               <h3 className="text-base sm:text-lg font-semibold text-text-primary">Évolution des Stocks (7 derniers jours)</h3>
               <Button
@@ -393,6 +397,7 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+          )}
         </div>
       </main>
       
