@@ -279,6 +279,21 @@ const UserManagement = () => {
     setIsDetailsModalOpen(true);
   };
 
+  const handleCopyCompanyId = () => {
+    if (currentCompany?.id) {
+      navigator.clipboard.writeText(currentCompany.id);
+      alert(`ID de l'entreprise copié :\n${currentCompany.id}`);
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    if (currentCompany?.id) {
+      const inviteUrl = `${window.location.origin}/accept-invitation?companyId=${currentCompany.id}`;
+      navigator.clipboard.writeText(inviteUrl);
+      alert(`Lien d'invitation copié :\n${inviteUrl}`);
+    }
+  };
+
   const handleBulkAction = async (action) => {
     const selectedUserObjects = users?.filter((user) => selectedUsers?.includes(user?.id));
 
@@ -338,6 +353,49 @@ const UserManagement = () => {
         />
 
         <div className="p-4 lg:p-6">
+
+          {/* Company Info Card */}
+          {currentCompany?.id && (
+            <div className="bg-card border border-border rounded-lg p-4 lg:p-5 mb-6 card-shadow">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon name="Building" size={20} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-text-primary">{currentCompany.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-text-muted font-mono bg-muted px-2 py-0.5 rounded">
+                        {currentCompany.id}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyCompanyId}
+                    iconName="Copy"
+                    iconPosition="left"
+                    className="text-xs"
+                  >
+                    Copier l'ID
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleCopyInviteLink}
+                    iconName="Link"
+                    iconPosition="left"
+                    className="text-xs"
+                  >
+                    Copier le lien d'invitation
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
