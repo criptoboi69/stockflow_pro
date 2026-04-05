@@ -128,8 +128,10 @@ const NotificationBell = ({
           {/* Backdrop for mobile */}
           <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
           
-          {/* Dropdown Panel - Fixed positioning to escape sidebar overflow */}
-          <div className="fixed right-4 top-14 lg:right-auto lg:left-1/2 lg:-translate-x-1/2 w-[calc(100vw-2rem)] sm:w-96 md:w-[420px] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
+          {/* Dropdown Panel */}
+          {/* Mobile: fixed, centered */}
+          {/* Desktop: absolute, positioned relative to parent (bell button container) */}
+          <div className="lg:absolute lg:right-0 lg:top-full lg:mt-2 fixed inset-x-4 top-16 lg:inset-x-auto lg:w-[420px] w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-surface flex-shrink-0">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
