@@ -37,7 +37,7 @@ const NotificationBell = ({
   }, [isOpen]);
 
   const formatTimeAgo = (timestamp) => {
-    if (!timestamp) return 'Inconnu';
+    if (!timestamp) return '';
     
     const now = new Date();
     const time = new Date(timestamp);
@@ -45,7 +45,7 @@ const NotificationBell = ({
     // Check if date is valid
     if (isNaN(time.getTime())) {
       console.warn('Invalid timestamp:', timestamp);
-      return 'Date invalide';
+      return '';
     }
     
     const diffInSeconds = Math.floor((now - time) / 1000);
@@ -53,22 +53,30 @@ const NotificationBell = ({
     const diffInHours = Math.floor(diffInMinutes / 60);
     const diffInDays = Math.floor(diffInHours / 24);
     
-    // Debug log for first notification only
-    if (timestamp && Math.abs(diffInMinutes) < 2) {
-      console.log('Notification timestamp debug:', {
-        timestamp,
-        parsed: time.toISOString(),
-        now: now.toISOString(),
-        diffMinutes: diffInMinutes
+    // Recent (less than 1 hour): show actual time (e.g., "14:22")
+    if (diffInHours < 1) {
+      return time.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     }
     
-    if (diffInMinutes < 1) return 'À l\'instant';
-    if (diffInMinutes < 60) return `Il y a ${diffInMinutes} min`;
-    if (diffInHours < 24) return `Il y a ${diffInHours} h`;
-    if (diffInDays < 7) return `Il y a ${diffInDays} j`;
+    // Today: show time (e.g., "14:22")
+    if (diffInDays < 1 && time.getDate() === now.getDate()) {
+      return time.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
     
-    // For older notifications, show actual date
+    // This week: show day name (e.g., "Lun.")
+    if (diffInDays < 7) {
+      return time.toLocaleDateString('fr-FR', {
+        weekday: 'short'
+      });
+    }
+    
+    // Older: show full date (e.g., "05/04/2026")
     return time.toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
