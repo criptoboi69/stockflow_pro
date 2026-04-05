@@ -127,6 +127,53 @@ export default defineConfig(({ mode }) => {
 
           createImageUploadMiddleware({ route: "/api/upload-product-image", folder: "products", idField: "productId", table: "products" });
           createImageUploadMiddleware({ route: "/api/upload-location-image", folder: "locations", idField: "locationId", table: "locations" });
+
+          server.middlewares.use('/api/send-invitation', async (req, res, next) => {
+            if (req.method !== 'POST') return next();
+
+            try {
+              if (!supabaseUrl || !serviceRoleKey) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Supabase server config missing' }));
+                return;
+              }
+
+              let rawBody = '';
+              req.on('data', (chunk) => {
+                rawBody += chunk;
+              });
+
+              req.on('end', async () => {
+                try {
+                  const payload = rawBody ? JSON.parse(rawBody) : {};
+                  const functionsUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/send-invitation`;
+
+                  const response = await fetch(functionsUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${serviceRoleKey}`
+                    },
+                    body: JSON.stringify(payload)
+                  });
+
+                  const text = await response.text();
+                  res.statusCode = response.status;
+                  res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
+                  res.end(text);
+                } catch (error) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: error?.message || 'Failed to proxy invitation email request' }));
+                }
+              });
+            } catch (error) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: error?.message || 'Failed to handle invitation email request' }));
+            }
+          });
         }
       }
     ],

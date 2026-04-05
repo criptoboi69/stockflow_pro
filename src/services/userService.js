@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { emailService } from './emailService';
+import { logger } from '../utils/logger';
 
 export const userService = {
   async getCompanyUsers(companyId) {
@@ -71,38 +71,31 @@ export const userService = {
 
       const acceptUrl = `${window.location.origin}/accept-invitation?token=${token}`;
 
-      // Send invitation email via Supabase Edge Function
+      // Send invitation email via local server endpoint (service role stays server-side)
       try {
-        const edgeFunctionUrl = `${window.location.origin.replace(":4028", ":8000")}/functions/v1/send-invitation`;
-        console.info('Sending email via Supabase Edge Function to:', email);
-        
-        const emailResponse = await fetch(edgeFunctionUrl, {
-          method: "POST",
+        const emailResponse = await fetch('/api/send-invitation', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             email,
-            firstName: firstName || "",
-            lastName: lastName || "",
-            roleName: role === "super_admin" ? "Super Admin" : role === "admin" ? "Administrateur" : role === "manager" ? "Manager" : "Employé",
-            companyName: companyName || "StockFlow",
+            firstName: firstName || '',
+            lastName: lastName || '',
+            roleName: role === 'super_admin' ? 'Super Admin' : role === 'admin' ? 'Administrateur' : role === 'manager' ? 'Manager' : 'Employé',
+            companyName: companyName || 'StockFlow',
             inviterName: inviterName || "L'équipe StockFlow",
             acceptUrl
           })
         });
-        
-        const emailResult = await emailResponse.json();
-        console.info("Edge Function response:", emailResponse.status, emailResult);
-        
+
+        const emailResult = await emailResponse.json().catch(() => ({}));
+
         if (!emailResponse.ok) {
-          console.error("Edge Function error:", emailResult);
-        } else {
-          console.info("Invitation email sent via Supabase Edge Function:", emailResult?.data?.id);
+          logger.error('Invitation email API error:', emailResult);
         }
       } catch (emailError) {
-        console.error("Failed to send invitation email via Edge Function:", emailError);
+        logger.error('Failed to send invitation email:', emailError);
         // Don't fail the invitation if email fails
       }
 
@@ -114,7 +107,7 @@ export const userService = {
         error: null 
       };
     } catch (error) {
-      console.error('Error inviting user:', error);
+      logger.error('Error inviting user:', error);
       return { data: null, error };
     }
   },
