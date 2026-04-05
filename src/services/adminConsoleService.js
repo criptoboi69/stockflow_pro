@@ -49,20 +49,38 @@ class AdminConsoleService {
     console.info('getCompaniesOverview: Starting...');
     // Use admin client to bypass RLS
     const adminSupabase = getAdminClient();
-    const [companiesRes, usersRes, productsRes, locationsRes, auditRes] = await Promise.all([
-      adminSupabase.from('companies').select('id,name,status,created_at,updated_at'),
-      adminSupabase.from('user_company_roles').select('company_id,user_id,role,is_active'),
-      adminSupabase.from('products').select('company_id,quantity,price,min_stock,status'),
-      adminSupabase.from('locations').select('company_id,id'),
-      adminSupabase.from('audit_logs').select('company_id,created_at').order('created_at', { ascending: false })
-    ]);
+    
+    // Debug each query separately
+    console.info('Query 1: companies...');
+    const companiesRes = await adminSupabase.from('companies').select('id,name,status,created_at,updated_at');
+    console.info('companies:', companiesRes.data?.length, companiesRes.error);
+    
+    console.info('Query 2: user_company_roles...');
+    const usersRes = await adminSupabase.from('user_company_roles').select('company_id,user_id,role,is_active');
+    console.info('user_company_roles:', usersRes.data?.length, usersRes.error);
+    
+    console.info('Query 3: products...');
+    const productsRes = await adminSupabase.from('products').select('company_id,quantity,price,min_stock,status');
+    console.info('products:', productsRes.data?.length, productsRes.error);
+    
+    console.info('Query 4: locations...');
+    const locationsRes = await adminSupabase.from('locations').select('company_id,id');
+    console.info('locations:', locationsRes.data?.length, locationsRes.error);
+    
+    console.info('Query 5: audit_logs...');
+    const auditRes = await adminSupabase.from('audit_logs').select('company_id,created_at').order('created_at', { ascending: false });
+    console.info('audit_logs:', auditRes.data?.length, auditRes.error);
 
     const companies = companiesRes.data || [];
-    console.info('getCompaniesOverview: Raw companies:', companies?.length, companies);
+    console.info('getCompaniesOverview: Raw companies:', companies?.length);
     const users = usersRes.data || [];
+    console.info('getCompaniesOverview: users:', users?.length);
     const products = productsRes.data || [];
+    console.info('getCompaniesOverview: products:', products?.length);
     const locations = locationsRes.data || [];
+    console.info('getCompaniesOverview: locations:', locations?.length);
     const audits = auditRes.data || [];
+    console.info('getCompaniesOverview: audits:', audits?.length);
 
     console.info('getCompaniesOverview: Processing companies...');
     return companies.map((company) => {
