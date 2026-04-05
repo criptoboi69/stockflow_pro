@@ -186,10 +186,16 @@ const UserManagement = () => {
 
       if (error) throw error;
 
+      // Show invitation link (email might not be configured)
+      const linkMessage = `Invitation créée !\n\nLien d'acceptation :\n${data?.acceptUrl}\n\nCopie ce lien et envoie-le à ${userData?.email}`;
+      alert(linkMessage);
+
       await loadUsers();
       setIsAddModalOpen(false);
+      return { success: true, acceptUrl: data?.acceptUrl };
     } catch (error) {
       logger.error('Error inviting user:', error);
+      throw error;
     }
   };
 
