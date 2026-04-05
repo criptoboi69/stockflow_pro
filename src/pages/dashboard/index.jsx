@@ -19,8 +19,8 @@ import { logger } from '../../utils/logger';
 const Dashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { currentRole, currentCompany, canEdit } = useAuth();
-  const canViewStats = canEdit?.(); // Only admin+ can see stats/charts
+  const { currentRole, currentCompany, isAdministrator } = useAuth();
+  const canViewStats = isAdministrator?.(); // Only super_admin + admin can see stats/charts
   const [products, setProducts] = useState([]);
   const [kpiData, setKpiData] = useState([
     {
