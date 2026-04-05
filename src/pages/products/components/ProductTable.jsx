@@ -18,6 +18,7 @@ const ProductTable = ({
   onStockMovement,
   sortField,
   sortDirection,
+  canUserEdit,
   onSort
 }) => {
   const { isAdministrator, isManager } = useAuth();
@@ -224,15 +225,17 @@ const ProductTable = ({
                       >
                         <Icon name="Eye" size={isMobile ? 14 : 16} />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size={isMobile ? "icon-sm" : "icon"}
-                        onClick={() => onEdit(product)}
-                        className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
-                        title="Modifier"
-                      >
-                        <Icon name="Edit" size={isMobile ? 14 : 16} />
-                      </Button>
+                      {canUserEdit && (
+                        <Button
+                          variant="ghost"
+                          size={isMobile ? "icon-sm" : "icon"}
+                          onClick={() => onEdit(product)}
+                          className={`text-text-muted hover:text-text-primary ${isMobile ? 'w-8 h-8' : ''}`}
+                          title="Modifier"
+                        >
+                          <Icon name="Edit" size={isMobile ? 14 : 16} />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size={isMobile ? "icon-sm" : "icon"}

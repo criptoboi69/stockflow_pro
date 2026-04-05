@@ -5,7 +5,7 @@ import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 
-const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement }) => {
+const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement, canUserEdit }) => {
   const { isAdministrator, isManager } = useAuth();
   const { settings } = useCompanySettings();
   const canSeePrices = isAdministrator() || isManager();
@@ -61,14 +61,16 @@ const ProductCard = ({ product, onEdit, onView, onGenerateQR, onStockMovement })
           >
             <Icon name="Eye" size={16} />
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => onEdit(product)}
-            className="bg-surface text-text-primary hover:bg-muted p-2 min-w-[36px]"
-          >
-            <Icon name="Edit" size={16} />
-          </Button>
+          {canUserEdit && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onEdit(product)}
+              className="bg-surface text-text-primary hover:bg-muted p-2 min-w-[36px]"
+            >
+              <Icon name="Edit" size={16} />
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"

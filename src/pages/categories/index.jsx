@@ -18,7 +18,7 @@ const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const { currentRole, currentCompany } = useAuth();
+  const { currentRole, currentCompany, canEdit } = useAuth();
 
   useEffect(() => {
     if (currentCompany?.id) {

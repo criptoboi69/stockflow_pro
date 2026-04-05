@@ -192,13 +192,15 @@ const SidebarNavigation = ({
 
           {/* Mobile Actions */}
           <div className="flex items-center gap-2">
-            <NotificationBell
-              notifications={notifications}
-              unreadCount={unreadCount}
-              onMarkAsRead={markAsRead}
-              onMarkAllAsRead={markAllAsRead}
-              size="sm"
-            />
+            {canEdit() && (
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                size="sm"
+              />
+            )}
             <ThemeToggle size="sm" />
           </div>
         </div>
@@ -235,13 +237,15 @@ const SidebarNavigation = ({
           <div className="flex items-center space-x-2">
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2">
-              <NotificationBell
-                notifications={notifications}
-                unreadCount={unreadCount}
-                onMarkAsRead={markAsRead}
-                onMarkAllAsRead={markAllAsRead}
-                size={isCollapsed ? "sm" : "md"}
-              />
+              {canEdit() && (
+                <NotificationBell
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  size={isCollapsed ? "sm" : "md"}
+                />
+              )}
               <ThemeToggle
                 size={isCollapsed ? "sm" : "md"}
                 variant="dropdown"

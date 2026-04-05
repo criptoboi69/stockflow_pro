@@ -452,6 +452,8 @@ export const AuthProvider = ({ children }) => {
   const isSuperAdmin = () => hasRole('super_admin');
   const isAdministrator = () => hasRole(['super_admin', 'administrator']);
   const isManager = () => hasRole(['super_admin', 'administrator', 'manager']);
+  const isEmployee = () => hasRole('employee') || currentRole === 'user';
+  const canEdit = () => !isEmployee(); // All roles except employee can edit
 
   const value = {
     user,
@@ -469,7 +471,9 @@ export const AuthProvider = ({ children }) => {
     hasRole,
     isSuperAdmin,
     isAdministrator,
-    isManager
+    isManager,
+    isEmployee,
+    canEdit
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

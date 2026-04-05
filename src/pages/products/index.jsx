@@ -25,7 +25,7 @@ const Products = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const authContext = useAuth();
-  const { user, currentCompany, currentRole, loading: authLoading } = authContext || {};
+  const { user, currentCompany, currentRole, loading: authLoading, canEdit } = authContext || {};
   const { isMobile, isDesktop } = useResponsive();
 
   // UI State
@@ -495,15 +495,17 @@ const Products = () => {
               >
                 Scanner QR
               </Button>
-              <Button
-                size="sm"
-                onClick={handleAddProduct}
-                iconName="Plus"
-                iconPosition="left"
-                className="text-xs lg:text-sm"
-              >
-                Ajouter produit
-              </Button>
+              {canEdit?.() && (
+                <Button
+                  size="sm"
+                  onClick={handleAddProduct}
+                  iconName="Plus"
+                  iconPosition="left"
+                  className="text-xs lg:text-sm"
+                >
+                  Ajouter produit
+                </Button>
+              )}
             </>
           }
         />
@@ -554,7 +556,8 @@ const Products = () => {
                 onStockMovement={handleStockMovement}
                 sortField={sortField}
                 sortDirection={sortDirection}
-                onSort={handleSort} />
+                onSort={handleSort}
+                canUserEdit={canEdit?.()} />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -565,7 +568,8 @@ const Products = () => {
                   onEdit={handleEditProduct}
                   onView={handleViewProduct}
                   onGenerateQR={handleGenerateQR}
-                  onStockMovement={handleStockMovement} />
+                  onStockMovement={handleStockMovement}
+                  canUserEdit={canEdit?.()} />
               ))}
             </div>
           )}
